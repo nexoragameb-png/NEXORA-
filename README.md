@@ -1,70 +1,215 @@
-# NEXORA — React Native (Expo SDK 58, TypeScript)
+<p align="center">
+  <img src="docs/readme/hero.webp" alt="NEXORA" width="100%" />
+</p>
 
-## Run in Expo Go
-1. Install Node.js 20+ on your PC.
-2. In this folder: `npm install`
-3. `npx expo start` (if the phone is not on the same Wi-Fi: `npx expo start --tunnel`)
-4. Open **Expo Go** on the phone (latest version, SDK 58) and scan the QR code.
+<h1 align="center">⚡ NEXORA · فوتبال دیسکی</h1>
 
-Web preview: `npx expo start --web`
+<p align="center">
+  <b>فوتبال انگشتی با دیسک‌های فلزی NX، آرناهای پرهیجان، جام جهانی ماهانه و رقابت آنلاین زنده</b>
+</p>
 
-## Structure
-- `src/game/engine.ts` — physics engine (pure TS, fixed 240 Hz sub-steps, render interpolation, AI)
-- `src/game/render.ts` — Skia renderer (GPU sphere shader for the ball, glow, trails, particles)
-- `src/screens/*` — Home, Pilot (discs), Armory (balls/arenas), Market, Profile, Settings, Setup, Match, Result
-- `src/ui/Backdrop.tsx` — GPU nebula/starfield shader per sector
-- `src/store.tsx` — local profile (AsyncStorage)
+<p align="center">
+  <a href="https://github.com/nexoragameb-png/NEXORA-/releases/latest"><img src="https://img.shields.io/github/v/release/nexoragameb-png/NEXORA-?label=%D8%AF%D8%A7%D9%86%D9%84%D9%88%D8%AF%20APK&style=for-the-badge&color=7c3aed" alt="دانلود" /></a>
+  <img src="https://img.shields.io/badge/version-2.0.1-22c55e?style=for-the-badge" alt="version" />
+  <img src="https://img.shields.io/badge/Android-APK-3ddc84?style=for-the-badge&logo=android&logoColor=white" alt="Android" />
+  <img src="https://img.shields.io/badge/Expo-SDK%2058-000020?style=for-the-badge&logo=expo&logoColor=white" alt="Expo" />
+  <img src="https://img.shields.io/badge/Supabase-Realtime-3ecf8e?style=for-the-badge&logo=supabase&logoColor=white" alt="Supabase" />
+</p>
 
-Online multiplayer/backend from the web build is not part of this version (offline: vs bot + local 2P).
+<div dir="rtl" align="right">
 
-## v3 (NX8 world UI)
-- Home is now the 3D gate world from the "Nexora 3D Menu" page: warp intro, swipeable portal ring, holographic draggable panels (profile, shop, discs, settings, mode).
-- Performance: match canvas no longer re-renders through React (picture pushed via a Reanimated shared value), pieces drawn from pre-rendered sprites, no per-frame blur, backdrop is baked images animated on the UI thread (no full-screen shader).
-- Pieces enlarged (radius 42 -> 49). Ball curve (spin drift) removed: shots travel straight.
-- To judge real speed, run without dev mode:  npx expo start --no-dev --minify -c
+## 🎮 نکسورا چیست؟
 
-## v4 (full UI rebuild)
-- New app shell: top HUD (level, coins, gems, daily gift, settings) + animated bottom tab bar (Home, Team, Play, Shop, Profile).
-- Home hub: hero pedestal art, mascot, quick-play button, league strip, game-mode rail, command-deck menu plates, loadout, missions.
-- Play: 3D swipe carousel of game modes (UI-thread scroll animation), league road, rewards.
-- Team: discs (10 categories incl. new Elite 36, Emblems 16, Legends 6, Chrome 8), balls, fields, formation preview on a mini pitch.
-- Shop: legendary discs, free + royal chests with opening animation, daily -30% deals, gem exchange, full catalogue.
-- Profile: editable name, level, league, win-rate ring, stats, 8 achievements with claimable rewards.
-- 7-day daily reward calendar, match setup bottom sheet, settings sheet (sound, music, haptics, graphics quality, default AI).
-- Performance: expo-image (memory+disk cache), FlatList grids, all animation on the UI thread (Reanimated), "Smooth" graphics mode for weak phones.
+**نکسورا** یک بازی فوتبال دیسکی (فوتبال انگشتی) برای موبایل است: دیسکت را با انگشت بکش، زاویه و قدرت را تنظیم کن و رها کن تا توپ را به دروازه‌ی حریف بفرستی. بازی کاملاً **فارسی و راست‌به‌چپ** است، هم **آفلاین** مقابل هوش مصنوعی و دوستانت اجرا می‌شود و هم **آنلاین** با بازیکن‌های واقعی، چت صوتی و متنی، باشگاه‌ها و تورنمنت‌ها.
 
-## v2.0.0 (NEXORA 2)
-**Online / backend (Supabase, `supabase/schema_v3.sql` — idempotent, applied to project `eisstodgncimypdawisy`)**
-- Matchmaking rewrite for 1v1 / 2v2 / 3v3: one queue per mode+kind (+arena tier), serialized with an advisory lock (no more two players each creating their own room), re-queueing returns the same room (no double joins), only rooms with a live heartbeat are matched, the server starts the match itself the moment a room fills. Rematches: every player re-confirms, then the 3-2-1 countdown starts.
-- Stale cleanup every minute via pg_cron (`_sweep_rooms`): silent players leave waiting rooms after 45 s, matches without any heartbeat for 90 s (or > 40 min) are abandoned and refunded, unfilled matchmade rooms close after 10 min, empty rooms are deleted, hosts are reassigned.
-- Removed the ambiguous v1 `quick_match(text)` overload.
-- **ARENA DUEL** (`duel_join(tier, mode)`, table `arena_tiers` + escrow `arena_stakes`): entry fee charged server-side when the match starts, prize paid by `report_match`, draws / abandoned / swept matches refunded.
-  | Arena | Rule | Entry | Prize |
-  |---|---|---|---|
-  | BERMUDA ARENA | normal (first to 3) | 100 coins | 200 coins |
-  | NEXORA ARENA | first to 3 goals | 250 coins | 500 coins |
-  | NX ARENA | 5 minutes, leader wins (golden goal on a tie) | 500 coins | 1000 coins |
-  | SPACE ARENA | 3 minutes | 2000 coins | 4000 coins |
-  | KAKERO ARENA | first to 5 goals | 50 gems | 100 gems |
-- **WORLD CUP** (`wc_tick`, `monthly_ranking`): one cup per month (Tehran calendar), seeded on the 25th from the top 64 of that month's ranking (3 pts win / 1 draw), 16 groups of 4 (3 rounds), top 2 of every group → knockout → final. Winner: 500 gems. Overdue matches are decided automatically (group 0-0, knockout: higher seed). pg_cron runs `wc_tick` hourly.
-- Tournament / league rewards are gems only (≤ 30; the World Cup's 500 is the single exception). Custom tournaments: 4 / 8 / 16 / 32 / 64.
-- Disc packs (`disc_packs`, `buy_pack`) priced 130–300 gems; single discs 135–300 gems; every disc has power + accuracy on a 1–10 scale that changes shot speed (×0.75–×1.25), aim error and aim-preview length.
-- Varied daily challenges (5 per day, all of different kinds; new: quick matches, duels, big wins, follow, messages, club join, club challenges).
-- Club team challenges (`club_challenge`, `club_challenge_respond`) → private room + system message in both club chats.
-- Room management: host transfer, privacy / voice toggles, social (talk-only) rooms with text + voice chat.
-- `livekit-token` edge function reads `LIVEKIT_URL` / `LIVEKIT_API_KEY` / `LIVEKIT_API_SECRET`; when it fails the app shows «چت صوتی هنوز فعال نشده» and everything else keeps working.
+---
 
-**App**
-- New screens: Arena Duel, World Cup (qualification table with the top-64 cut line, groups, knockout bracket), Social (inbox, groups/channels, clubs, friends), Chat (realtime, image messages, read state, mute/leave), Club (members & roles, recruiting requests, invites, team challenges), public player profile (follow, private message, block, club invite). Custom profile photo upload (Supabase Storage `avatars` bucket, own-folder RLS).
-- **Oracle**: a cheeky offline sidekick on Home (rule-based tips, hints and banter in Persian, 19 expressions).
-- Match graphics: goal shockwave + glowing goal line, additive halo on a fast ball (pre-rendered sprites; disabled in the low-quality "Smooth" mode).
-- Offline: vs bot (quick, NEXORA Cup — champion now gets 20 gems instead of coins —, galaxy, training) and local 2-player.
-- Build: R8 keep rules for LiveKit/WebRTC through `expo-build-properties`; splash via the `expo-splash-screen` plugin; `expo-system-ui`.
+## 📥 دانلود
 
-## v2.0.1
-- **Rooms start for real**: a lobby / club-challenge host can start as soon as everyone seated is ready; empty seats are played by the host's bot (friendly, unranked, `matches.bots`). Quick / arena searches offer "play the bot" after 20 s (`start_bot_match`). Auto-seat alternates blue/red so two friends in a 2v2 face each other. Tournament and duel rooms still need full sides.
-- **Sign-up screen** (`src/screens/AuthScreen.tsx`): username + e-mail + password with live username check (`username_available`), sign-in, forgot password, guest → account upgrade keeping progress. Shown once after the intro, then from Profile / Settings. Supabase e-mail auto-confirm is on (no SMTP configured).
-- **One disc style**: only the 31 metallic NX discs (18 clubs, 13 national teams) in `assets/g/teams`; catalog, prices (130–300 gems, 9 free starters), stats and packs in `supabase/schema_v4.sql` + `DISC_META` in `src/game/data.ts`.
-- New backgrounds (`assets/g/bg`: stadium for Home/Play/Team/online, purple portal for Shop/Profile/social) with a dark scrim; neon GOAL overlay and START/READY/PLAY icons (`assets/g/fx`).
-- Discs are 16% bigger on the pitch (`PR` 49 → 57).
-- SQL: run `supabase/schema_v4.sql` after v3 (idempotent).
+<p align="center">
+  <a href="https://github.com/nexoragameb-png/NEXORA-/releases/latest"><b>⬇️ دانلود آخرین نسخه‌ی APK اندروید</b></a>
+</p>
+
+- آخرین فایل `nexora-*.apk` را از بخش **Assets** همان صفحه دانلود و نصب کن (نصب از منابع ناشناس باید فعال باشد).
+- هر بار که کد به شاخه‌ی `main` می‌رسد، GitHub Actions به‌صورت خودکار یک APK تازه می‌سازد و در [Releases](https://github.com/nexoragameb-png/NEXORA-/releases) منتشر می‌کند.
+- نسخه‌های فعلی، بیلد آزمایشی هستند و با کلید دیباگ امضا شده‌اند.
+
+---
+
+## ✨ امکانات
+
+### 🕹️ حالت‌های آفلاین
+
+| حالت | توضیح | جایزه |
+|:---:|:---|:---:|
+| ⚡ بازی سریع | یک مسابقه‌ی فوری مقابل هوش مصنوعی | سکه، XP و جام |
+| 🏆 جام نکسورا | سه حریف پشت سر هم تا فینال؛ هر مرحله سخت‌تر | ۲ برابر + ۲۰ الماس برای قهرمان |
+| 🌌 چالش کهکشانی | دو دقیقه مقابل ربات افسانه‌ای | ۳ برابر جایزه |
+| 👥 دو نفره | با دوستت روی یک گوشی بازی کن | افتخار! |
+| 🎯 تمرین | بدون تایمر، ربات آسان، برای گرم کردن دست | XP کم |
+
+سه سطح هوش مصنوعی (آسان، معمولی، سخت)، ۶ ترکیب تاکتیکی، ۲۹ زمین متنوع و ۳۶ توپ با ردّ نور اختصاصی.
+
+### 🌐 حالت‌های آنلاین
+
+- **مسابقه‌ی سریع ۱ به ۱، ۲ به ۲ و ۳ به ۳** با سیستم هم‌تراز‌سازی بر اساس رتبه
+- **اتاق‌های اختصاصی** با کد، جایگاه تیم آبی و قرمز، اعلام آمادگی، تماشاگر، انتقال میزبانی و تنظیم قوانین (تا ۳ یا ۵ گل، ۳ یا ۵ دقیقه، زمان هر نوبت، انتخاب زمین)
+- **جایگاه خالی؟ مشکلی نیست:** میزبان می‌تواند بازی را شروع کند و ربات جای بازیکنان غایب بازی می‌کند (بازی دوستانه، بدون امتیاز). در جستجوی سریع هم پس از ۲۰ ثانیه گزینه‌ی «بازی با ربات» ظاهر می‌شود
+- **لیگ‌ها و رتبه‌بندی** با امتیاز ELO، فصل‌ها و جوایز فصلی
+- **چالش‌های روزانه** با جایزه‌ی الماس
+- **تورنمنت‌ها** با فرمت‌های حذفی، دوحذفی، دوره‌ای، سوئیسی و لیگ
+- پخش زنده‌ی بازی برای تماشاگرها و **چت صوتی** داخل اتاق
+
+### 🏟️ آرناها (دوئل با ورودی و جایزه)
+
+| آرنا | ورودی | جایزه‌ی برنده | قانون |
+|:---|:---:|:---:|:---|
+| آرنای برمودا | ۱۰۰ سکه | ۲۰۰ سکه | قوانین عادی · تا ۳ گل |
+| آرنای نکسورا | ۲۵۰ سکه | ۵۰۰ سکه | اولین تیمی که ۳ گل بزند |
+| آرنای NX | ۵۰۰ سکه | ۱٬۰۰۰ سکه | ۵ دقیقه · جلوتر برنده است |
+| آرنای فضا | ۲٬۰۰۰ سکه | ۴٬۰۰۰ سکه | ۳ دقیقه |
+| آرنای کاکرو | ۵۰ الماس | ۱۰۰ الماس | اولین تیمی که ۵ گل بزند |
+
+ورودی هنگام شروع بازی روی سرور نگه داشته می‌شود، به برنده پرداخت می‌شود و در صورت تساوی یا لغو بازی به همه برمی‌گردد.
+
+### 🌍 جام جهانی ماهانه
+
+هر ماه **۶۴ بازیکن برتر** رتبه‌بندی ماهانه به جام جهانی نکسورا راه پیدا می‌کنند: **۱۶ گروه ۴ نفره**، سپس مرحله‌ی حذفی تا فینال. قهرمان **۵۰۰ الماس** جایزه می‌گیرد. (جوایز تورنمنت‌های معمولی فقط الماس و حداکثر ۳۰ عدد است.)
+
+### 🛡️ ۳۱ تیم با دیسک‌های فلزی NX
+
+همه‌ی دیسک‌ها یک سبک یکدست دارند: دیسک فلزی سه‌بعدی با نشان تیم و پلاک **NX**.
+
+<p align="center"><b>۱۸ باشگاه</b></p>
+<p align="center"><img src="docs/readme/clubs.webp" alt="باشگاه‌ها" width="92%" /></p>
+
+رئال مادرید · بارسلونا · منچسترسیتی · منچستریونایتد · لیورپول · آرسنال · چلسی · بایرن مونیخ · بوروسیا دورتموند · پاری‌سن‌ژرمن · اینتر · آث میلان · یوونتوس · الهلال · تاتنهام · اینترمیامی · **پرسپولیس** · **استقلال**
+
+<p align="center"><b>۱۳ تیم ملی</b></p>
+<p align="center"><img src="docs/readme/nations.webp" alt="تیم‌های ملی" width="92%" /></p>
+
+آرژانتین · برزیل · فرانسه · آلمان · پرتغال · اسپانیا · ایتالیا · انگلیس · هلند · بلژیک · اروگوئه · کرواسی · ژاپن
+
+### 💪 قدرت و دقت دیسک‌ها
+
+هر دیسک دو آمار واقعی از **۱ تا ۱۰** دارد که مستقیماً روی بازی اثر می‌گذارد:
+
+- **قدرت (Power):** حداکثر سرعت و ضربه‌ی شوت
+- **دقت (Accuracy):** هرچه بیشتر، انحراف تصادفی ضربه کمتر
+
+| نوع | تعداد | قیمت |
+|:---|:---:|:---:|
+| دیسک‌های رایگان شروع | ۹ | رایگان |
+| دیسک‌های ویژه | ۲۲ | ۱۳۰ تا ۳۰۰ الماس |
+| بسته‌های دیسک | ۶ | ۱۳۰ تا ۳۰۰ الماس |
+
+### 💬 اجتماعی، باشگاه و چت
+
+- **پروفایل عمومی** با عکس، بیوگرافی، دنبال کردن، پیام خصوصی، مسدودسازی و دعوت به بازی
+- **چت زنده** با ارسال تصویر و وضعیت خوانده‌شدن، گروه‌ها و اتاق‌های گفتگوی صوتی
+- **باشگاه‌ها** با نقش رهبر، افسر و عضو، درخواست عضویت، چت اختصاصی و **چالش تیمی بین باشگاه‌ها**
+- **ثبت‌نام و ورود** با ایمیل و رمز عبور، بازیابی رمز، و تبدیل حساب مهمان به حساب دائمی بدون از دست رفتن پیشرفت
+
+### 🔮 اوراکل، دستیار بازی
+
+**اوراکل** همراه بازیگوش نکسوراست: روی صفحه‌ی اصلی نکته می‌دهد، چالش‌ها و جوایز آماده را یادآوری می‌کند و با بیش از ۱۵ حالت چهره واکنش نشان می‌دهد. کاملاً آفلاین و بدون سرویس هوش مصنوعی بیرونی کار می‌کند.
+
+### 🎨 گرافیک
+
+- رندر زمین و دیسک‌ها با **Skia** روی GPU: سایه، ردّ نور توپ، موج انفجار گل و لرزش دوربین
+- توپ سه‌بعدی چرخان با شیدر اختصاصی
+- پس‌زمینه‌های استادیوم نئونی و پورتال بنفش با لایه‌ی تیره برای خوانایی
+- جلوه‌ی نئونی **GOAL** هنگام گل و آیکون‌های نئونی شروع و آمادگی در اتاق‌ها
+- اینتروی «پرواز به نکسورا» با پرش فضایی
+- حالت **«روان»** برای گوشی‌های ضعیف‌تر
+
+<p align="center">
+  <img src="docs/readme/backgrounds.webp" alt="پس‌زمینه‌ها" width="70%" />
+</p>
+<p align="center">
+  <img src="docs/readme/fx.webp" alt="جلوه‌ها" width="80%" />
+</p>
+
+---
+
+## 🧰 فناوری‌ها
+
+| بخش | فناوری |
+|:---|:---|
+| اپلیکیشن | React Native 0.88 · Expo SDK 58 · TypeScript |
+| گرافیک | @shopify/react-native-skia · Reanimated · Expo Linear Gradient |
+| فیزیک | موتور اختصاصی دوبعدی (برخورد، اصطکاک، چرخش توپ، تیرک دروازه) |
+| بک‌اند | Supabase: Postgres · Auth · Realtime · Storage · pg_cron |
+| شبکه‌ی بازی | میزبان‌محور: میزبان شبیه‌سازی می‌کند و بقیه اسنپ‌شات‌ها را درون‌یابی می‌کنند |
+| صدا | LiveKit (چت صوتی) · expo-audio (جلوه‌ها و موسیقی) |
+| بیلد | GitHub Actions → APK اندروید در Releases |
+
+---
+
+## 🛠️ اجرا و ساخت
+
+پیش‌نیازها: Node.js 22، npm و برای بیلد اندروید JDK 17 و Android SDK.
+
+```bash
+git clone https://github.com/nexoragameb-png/NEXORA-.git
+cd NEXORA-
+npm ci
+
+# اجرا در حالت توسعه (Development Build لازم است؛ ماژول‌های بومی مثل Skia و LiveKit در Expo Go نیستند)
+npx expo start
+
+# بررسی‌ها
+npx tsc --noEmit
+npx expo-doctor
+
+# ساخت APK محلی (پوشه‌ی android به‌صورت خودکار تولید می‌شود؛ دستی ویرایشش نکن)
+npx expo prebuild --platform android
+cd android && ./gradlew assembleRelease
+```
+
+### بک‌اند (Supabase)
+
+فایل‌های SQL را به ترتیب در SQL Editor پروژه اجرا کن (همه قابل اجرای دوباره هستند):
+
+1. `supabase/schema.sql`
+2. `supabase/schema_v2.sql`
+3. `supabase/schema_v3.sql`
+4. `supabase/schema_v4.sql`
+
+آدرس و کلید عمومی پروژه در `src/net/publicConfig.ts` است و با `EXPO_PUBLIC_SUPABASE_URL` و `EXPO_PUBLIC_SUPABASE_ANON_KEY` قابل تغییر است. تابع لبه‌ی `supabase/functions/livekit-token` توکن چت صوتی را صادر می‌کند.
+
+### ساختار پروژه
+
+```
+App.tsx              ناوبری اصلی، تب‌ها و اینترو
+src/game/            موتور فیزیک، رندر Skia، داده‌ی تیم‌ها و زمین‌ها
+src/screens/         خانه، بازی، تیم، فروشگاه، پروفایل، ثبت‌نام
+src/online/          لابی، مسابقه‌ی آنلاین، آرنا، جام جهانی، تورنمنت، رتبه‌ها
+src/social/          چت، باشگاه، پروفایل عمومی
+src/net/             Supabase، احراز هویت، دیسک‌ها، صدا
+supabase/            اسکیمای پایگاه‌داده و تابع لبه
+assets/g/            تصاویر تیم‌ها، زمین‌ها، توپ‌ها، پس‌زمینه‌ها و صداها
+```
+
+---
+
+## 📝 تغییرات نسخه‌ی ۲.۰.۱
+
+- اتاق‌ها حالا واقعاً شروع می‌شوند: جایگاه‌های خالی با ربات پر می‌شوند و جستجوی سریع گزینه‌ی بازی با ربات دارد
+- صفحه‌ی کامل ثبت‌نام و ورود با نام کاربری، ایمیل و رمز عبور
+- فقط ۳۱ تیم با دیسک‌های فلزی یکدست NX، قیمت‌ها و بسته‌های جدید
+- پس‌زمینه‌های جدید استادیوم و پورتال، دیسک‌های ۱۶٪ بزرگ‌تر، جلوه‌ی نئونی گل
+
+---
+
+## 👨‍💻 سازنده
+
+<p align="center">
+  طراحی و توسعه: <b>اشکان کاکرو</b> (Ashkan Kakero)
+</p>
+
+<p align="center">
+  ساخته‌شده با ❤️ برای عاشقان فوتبال
+</p>
+
+</div>
