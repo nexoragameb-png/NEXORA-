@@ -8,6 +8,7 @@ import { ACHS } from '../game/meta';
 import { teamById, teamKey } from '../game/util';
 import { LEAGUE_FA, league, useStore } from '../store';
 import { Bar, Btn, Enter, Float, Img, Panel, Press, Pulse, T, Title } from '../ui/kit';
+import Oracle from '../ui/Oracle';
 import { C, F, G, fa } from '../ui/theme';
 import { MODES, Mode } from './Setup';
 import type { OnlineEntry } from '../nav';
@@ -38,10 +39,9 @@ function Home({ top, bottom, onOnline, onMode, onTab, onDaily, onSettings, onChe
         <Pulse size={heroW * .7} color="rgba(79,140,255,.35)" style={{ top: heroW * .12 }} />
         <Orbit size={heroW * 1.15} />
         <Float amp={7} dur={3000}><Img src={UI2.hero} style={{ width: heroW, height: heroW }} /></Float>
-        <Float amp={5} dur={2300} delay={400} style={{ position: 'absolute', left: 6, bottom: 10 }}>
-          <Img src={UI2.mascot} style={{ width: W * .26, height: W * .26 * 1.25 }} />
-        </Float>
-        <Bubble style={{ position: 'absolute', left: W * .2, bottom: W * .26 * 1.2 + 6 }} text={p.played ? 'یه دست دیگه، کاپیتان؟' : 'سلام کاپیتان! آماده‌ای؟'} />
+        <View style={{ position: 'absolute', left: 6, bottom: 10, zIndex: 5 }}>
+          <Oracle size={W * .28} dailyReady={dailyReady} chestReady={chestReady} />
+        </View>
         <Float amp={4} dur={3400} delay={900} style={{ position: 'absolute', right: 10, bottom: 40 }}>
           <Img src={UI2.d_crystal} style={{ width: W * .14, height: W * .14 * 1.9 }} />
         </Float>

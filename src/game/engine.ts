@@ -68,6 +68,8 @@ export class Engine {
   mleft = 0; tleft = 0; sudden = false; aiT = 0; aiPlan: null | { b: Body; dx: number; dy: number; l: number; t: number } = null;
   drag: null | { b: Body; sx: number; sy: number; cx: number; cy: number; ai?: boolean } = null;
   events: EngineEvent[] = []; cfg: MatchCfg; time = 0; lastWho: 0 | 1 = 0;
+  // visual-only goal shockwave (x, y, age seconds, team colour)
+  wave: { x: number; y: number; a: number; t: 0 | 1 } | null = null;
   // online: per-team AI takeover (a team with no connected human is played by the bot)
   aiTeams: [boolean, boolean] = [false, false];
 
@@ -258,6 +260,7 @@ export class Engine {
     this.slow = 1.1; this.cam = 1.4;
     const g = this.goals[t], c = ['#ffd23a', '#ffffff', '#3bd0ff', '#ff4a7a', '#7bff5a'];
     this.burst(this.ball.x, g.y, 80, 760, c, 1.4, 1); this.burst(this.ball.x, g.y, 50, 520, c, 1.8, 3);
+    this.wave = { x: this.ball.x, y: g.y, a: 0, t };
   }
 
   burst(x: number, y: number, n: number, sp: number, cols: string[], life: number, k = 0) {
@@ -311,9 +314,11 @@ export class Engine {
     this.flash = 1; this.shake[t] = .6; this.cam = 1.4;
     const g = this.goals[t], c = ['#ffd23a', '#ffffff', '#3bd0ff', '#ff4a7a', '#7bff5a'];
     this.burst(this.ball.x, g.y, 80, 760, c, 1.4, 1); this.burst(this.ball.x, g.y, 50, 520, c, 1.8, 3);
+    this.wave = { x: this.ball.x, y: g.y, a: 0, t };
   }
 
   tickFx(dt: number) {
+    if (this.wave) { this.wave.a += dt; if (this.wave.a > 1.2) this.wave = null; }
     this.flash = Math.max(0, this.flash - dt * 2); this.cam = Math.max(0, this.cam - dt * 3.2);
     this.shake[0] = Math.max(0, this.shake[0] - dt); this.shake[1] = Math.max(0, this.shake[1] - dt);
     const ball = this.ball; const sp = ball ? hyp(ball.vx, ball.vy) : 0;

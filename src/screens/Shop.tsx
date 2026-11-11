@@ -10,6 +10,7 @@ import { useStore } from '../store';
 import { Btn, Enter, Float, Img, Panel, Press, Pulse, Segment, T, Title } from '../ui/kit';
 import { C, F, G, fa } from '../ui/theme';
 import { useDiscs, useBuyDisc } from '../net/discs';
+import Packs from './Packs';
 import { useAuth } from '../net/auth';
 import { StatBars, discImg } from '../online/ui';
 import { buzz, sfx } from '../sound';
@@ -65,6 +66,8 @@ function Shop({ top, bottom, toast, onChest }: { top: number; bottom: number; to
           );
         })}
       </ScrollView>
+
+      <Packs toast={toast} />
 
       {/* chests */}
       <Title s="صندوقچه‌ها" en="SUPPLY CHESTS" accent={C.violet} />

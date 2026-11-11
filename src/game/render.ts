@@ -157,6 +157,36 @@ function drawBall(c: SkCanvas, b: Body, x: number, y: number, img: SkImage | nul
   c.save(); c.translate(x, y); c.scale(r, r); c.drawCircle(0, 0, 1, p); c.restore(); p.setShader(null);
 }
 
+// soft additive halo under a fast ball (pre-rendered sprite, one drawImage)
+let haloSpr: SkImage | null = null; const haloCF = new Map<string, any>();
+const haloPaint = (() => { const p = P(); p.setBlendMode(BlendMode.Plus); return p; })();
+function drawBallHalo(c: SkCanvas, e: Engine, x: number, y: number, ballIdx: number) {
+  const sp = Math.hypot(e.ball.vx, e.ball.vy); if (sp < 120) return;
+  if (!haloSpr) haloSpr = makeImg(128, 128, cc => { const p = P(); p.setShader(Skia.Shader.MakeRadialGradient({ x: 64, y: 64 }, 64, [col('#ffffff', .9), col('#ffffff', .25), col('#ffffff', 0)], [0, .35, 1], TileMode.Clamp)); cc.drawCircle(64, 64, 64, p); });
+  if (!haloSpr) return;
+  const tc = (TRAILS[ballIdx % TRAILS.length] || TRAILS[0]).c[0], R = e.ball.r * (2.2 + Math.min(1.4, sp / 1400));
+  let cf = haloCF.get(tc); if (!cf) { cf = Skia.ColorFilter.MakeBlend(Skia.Color(tc), BlendMode.SrcIn); haloCF.set(tc, cf); } haloPaint.setColorFilter(cf); haloPaint.setAlphaf(Math.min(.55, sp / 2600));
+  c.drawImageRectOptions(haloSpr, Skia.XYWHRect(0, 0, 128, 128), Skia.XYWHRect(x - R, y - R, 2 * R, 2 * R), FilterMode.Linear, MipmapMode.None, haloPaint);
+}
+
+// goal: expanding double shockwave + glowing goal mouth
+function drawGoalFx(c: SkCanvas, e: Engine, t: number) {
+  const w = e.wave; const g = paints.add2;
+  if (w) {
+    const k = w.a / 1.2, cc = TEAM_GLOW[w.t];
+    for (let i = 0; i < 2; i++) {
+      const kk = Math.max(0, k - i * .18); if (kk <= 0) continue;
+      g.setStrokeWidth(18 * (1 - kk) + 2); g.setColor(col(i ? '#ffffff' : cc, .75 * (1 - kk)));
+      c.drawCircle(w.x, w.y, 40 + kk * 520, g);
+    }
+  }
+  // the goal line of the team in possession glows softly; flashes after a goal
+  for (const gl of e.goals) {
+    const a = .12 + .06 * Math.sin(t * 3 + gl.team) + (w && w.t === gl.team ? .6 * (1 - w.a / 1.2) : 0);
+    g.setStrokeWidth(6); g.setColor(col(TEAM_GLOW[gl.team === 0 ? 1 : 0], a)); c.drawLine(gl.x1, gl.y, gl.x2, gl.y, g);
+  }
+}
+
 function drawTrail(c: SkCanvas, e: Engine, ballIdx: number) {
   const tr = e.trail, n = tr.length; if (n < 2) return;
   const cs = (TRAILS[ballIdx % TRAILS.length] || TRAILS[0]).c, BW = e.ball.r, p = paints.stroke;
@@ -208,18 +238,19 @@ function drawGoals(c: SkCanvas, e: Engine, im: SkImage | null, t: number) {
   });
 }
 
-export function frame(e: Engine, v: View, im: Images, bg: SkPicture | null, ballIdx: number, t: number): SkPicture {
+export function frame(e: Engine, v: View, im: Images, bg: SkPicture | null, ballIdx: number, t: number, hq = true): SkPicture {
   return createPicture((c: SkCanvas) => {
     if (bg) c.drawPicture(bg);
     const cam = e.cam, shx = cam > .05 ? (Math.random() - .5) * cam * 7 : 0, shy = cam > .05 ? (Math.random() - .5) * cam * 7 : 0;
     c.save(); c.translate(v.ox + shx, v.oy + shy); c.scale(v.s, v.s);
     const al = e.alpha();
     drawGoals(c, e, im.goal, t);
+    if (hq) drawGoalFx(c, e, t);
     const pos = (b: Body) => [b.px + (b.x - b.px) * al + b.vox, b.py + (b.y - b.py) * al + b.voy];
     const aimTeam = e.phase === 'aim' ? e.turn : -1;
     for (const b of e.bodies) if (b !== e.ball) { const [x, y] = pos(b); drawPiece(c, e, b, x, y, b.team === 0 ? im.t0 : im.t1, t, b.team === aimTeam && !(e.drag && e.drag.b !== b) && !e.isAiTurn(), e.phase === 'aim' && b.team !== e.turn); }
     drawTrail(c, e, ballIdx);
-    { const [x, y] = pos(e.ball); drawBall(c, e.ball, x, y, im.ball, v.s); }
+    { const [x, y] = pos(e.ball); if (hq) drawBallHalo(c, e, x, y, ballIdx); drawBall(c, e.ball, x, y, im.ball, v.s); }
     drawAim(c, e, t);
     drawParts(c, e);
     c.restore();

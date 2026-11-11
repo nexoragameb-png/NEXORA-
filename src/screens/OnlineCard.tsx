@@ -16,7 +16,7 @@ function OnlineCard({ onOnline }: { onOnline: (e?: OnlineEntry) => void }) {
   useEffect(() => { sh.value = withRepeat(withSequence(withDelay(1800, withTiming(1, { duration: 1300, easing: Easing.inOut(Easing.quad) })), withTiming(0, { duration: 0 })), -1, false); }, []);
   const tilt = useAnimatedStyle(() => ({ transform: [{ perspective: 700 }, { rotateX: `${rx.value}deg` }, { rotateY: `${ry.value}deg` }, { scale: 1 - Math.abs(rx.value) * .004 }] }));
   const shine = useAnimatedStyle(() => ({ transform: [{ translateX: -120 + sh.value * 620 }, { rotate: '20deg' }], opacity: sh.value > 0 && sh.value < 1 ? 1 : 0 }));
-  const links: [OnlineEntry, string, any][] = [['arena', 'آرنا', UI2.x_crown], ['tours', 'تورنمنت', UI2.x_trophy], ['leagues', 'لیگ', UI2.x_medal], ['challenges', 'چالش', UI2.c_calendar]];
+  const links: [Exclude<OnlineEntry, object>, string, any][] = [['duels', 'دوئل آرنا', UI2.x_crown], ['worldcup', 'جام جهانی', UI2.x_trophy], ['tours', 'تورنمنت', UI2.x_medal], ['leagues', 'لیگ', UI2.x_shield], ['challenges', 'چالش', UI2.c_calendar], ['social', 'اجتماعی', UI2.c_profile]];
   return (
     <View>
       <Pressable
@@ -38,9 +38,9 @@ function OnlineCard({ onOnline }: { onOnline: (e?: OnlineEntry) => void }) {
           </View>
         </Animated.View>
       </Pressable>
-      <View style={{ flexDirection: 'row-reverse', marginTop: 8 }}>
+      <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', marginTop: 8, justifyContent: 'space-between', rowGap: 8 }}>
         {links.map(([k, l, img], i) => (
-          <Press key={k} onPress={() => onOnline(k)} style={[st.link, { marginLeft: i < links.length - 1 ? 8 : 0 }]}>
+          <Press key={k} onPress={() => onOnline(k)} style={[st.link, { width: '32%' }]}>
             <Img src={img} style={{ width: 26, height: 26 }} />
             <T s={l} n={1} style={{ fontFamily: F.bold, fontSize: 11, marginRight: 4 }} />
           </Press>
@@ -56,5 +56,5 @@ const st = StyleSheet.create({
   shine: { position: 'absolute', top: -40, left: 0, width: 50, height: 200, backgroundColor: 'rgba(255,255,255,.22)' },
   live: { flexDirection: 'row', alignItems: 'center', height: 18, paddingHorizontal: 6, borderRadius: 9, backgroundColor: C.red, marginRight: 8 },
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#fff', marginRight: 4 },
-  link: { flex: 1, height: 44, borderRadius: 14, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(10,16,44,.85)', borderWidth: 1, borderColor: C.line },
+  link: { height: 44, borderRadius: 14, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(10,16,44,.85)', borderWidth: 1, borderColor: C.line },
 });

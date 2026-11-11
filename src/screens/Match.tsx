@@ -67,7 +67,7 @@ export default function Match({ cfg, teams, names, onFinish, onQuit, fx = true }
       }
       if (!fx && eng.parts.length > 40) eng.parts.length = 40;
       const v = viewRef.current;
-      picSet.current(frame(eng, v, imRef.current, bgRef.current, cfg.ball, (Date.now() - t0) / 1000));
+      picSet.current(frame(eng, v, imRef.current, bgRef.current, cfg.ball, (Date.now() - t0) / 1000, fx));
       const m = Math.max(0, Math.ceil(eng.mleft));
       const clock = cfg.matchTime > 0 ? (eng.sudden ? 'گل طلایی' : `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`) : `تا ${cfg.limit} گل`;
       const tl = cfg.turnTime > 0 && eng.phase === 'aim' ? Math.max(0, eng.tleft / cfg.turnTime) : 1;
