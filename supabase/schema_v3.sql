@@ -224,6 +224,11 @@ begin
   update rooms set is_private=coalesce(p_private,is_private), voice=coalesce(p_voice,voice),
     ranked=case when kind='social' then false else coalesce(p_ranked,ranked) end, updated_at=now() where id=p_room; end $$;
 
+-- settings of matchmade rooms (quick / arena / duel) are fixed by the server; only casual / social hosts may edit
+create or replace function public.update_room(p_room uuid, p_settings jsonb, p_name text default null) returns void language plpgsql security definer set search_path=public as $$
+begin update rooms set settings=coalesce(p_settings,settings), name=coalesce(nullif(trim(p_name),''),name), updated_at=now()
+  where id=p_room and host=auth.uid() and status='waiting' and kind in ('casual','social') and tournament_match_id is null; end $$;
+
 -- abandon: refunds duel stakes
 create or replace function public.abandon_match(p_match uuid) returns void language plpgsql security definer set search_path=public as $$
 declare m matches; begin
