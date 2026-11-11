@@ -31,6 +31,7 @@ import { rpc } from './src/net/supabase';
 import { NavCtx, OnlineEntry } from './src/nav';
 import OnlineRoot from './src/online/OnlineRoot';
 import { RecoveryModal } from './src/screens/Account';
+import AuthScreen from './src/screens/AuthScreen';
 
 type Route = 'tabs' | 'match' | 'result' | 'online';
 const DAY = 86400000;
@@ -70,6 +71,7 @@ function ShellInner({ toast }: { toast: (m: string, k?: string) => void }) {
   const [route, setRoute] = useState<Route>('tabs');
   const [tab, setTab] = useState<Tab>('home');
   const [intro, setIntro] = useState(true);
+  const [authOpen, setAuthOpen] = useState<null | 'up' | 'in'>(null);
   const [sheet, setSheet] = useState<null | { k: 'setup'; mode: Mode } | { k: 'settings' }>(null);
   const [modal, setModal] = useState<null | { k: 'daily' } | { k: 'chest'; prize: ChestPrize; premium: boolean }>(null);
   const [launch, setLaunch] = useState<Launch | null>(null);
@@ -91,6 +93,7 @@ function ShellInner({ toast }: { toast: (m: string, k?: string) => void }) {
 
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (authOpen) { setAuthOpen(null); return true; }
       if (route === 'online') return false; // OnlineRoot handles back itself
       if (route === 'result') { goHome(); return true; }
       if (route === 'tabs' && tab !== 'home' && !sheet && !modal) { setTab('home'); return true; }
@@ -126,7 +129,7 @@ function ShellInner({ toast }: { toast: (m: string, k?: string) => void }) {
     setResult({ r, reward, cup, levelUp }); transition(() => setRoute('result'));
   };
   const nextCup = () => {
-    const l = launch!, st = (l.stage || 0) + 1, pool = TEAMS.filter(t => t.cat === 'club' || t.cat === 'nat' || t.cat === 'elite');
+    const l = launch!, st = (l.stage || 0) + 1, pool = TEAMS;
     startMatch(buildLaunch('cup', p, { lvl: 1, rule: 'g3', tt: p.turnTime, opp: pool[Math.floor(Math.random() * pool.length)], stage: st }));
   };
 
@@ -153,8 +156,15 @@ function ShellInner({ toast }: { toast: (m: string, k?: string) => void }) {
     openChat: (id: string) => openOnline({ k: 'chat', id }),
     openClub: (id: string) => openOnline({ k: 'club', id }),
     openTeam: () => setTab('team'),
+    openAuth: (m: 'up' | 'in' = 'up') => setAuthOpen(m),
   }), [toast, openOnline]);
   const goTab = useCallback((t: Tab) => setTab(t), []);
+  // first run: after the intro, offer sign-up / sign-in once to players without an e-mail account
+  useEffect(() => {
+    if (intro || !ready || !auth.ready || !auth.configured || p.authSeen) return;
+    set({ authSeen: true });
+    if (!auth.uid || auth.isGuest) setAuthOpen('up');
+  }, [intro, ready, auth.ready, auth.uid, auth.isGuest, p.authSeen]);
 
   const veilSt = useAnimatedStyle(() => ({ opacity: veil.value }));
   if (!ready) return <View style={{ flex: 1, backgroundColor: C.bg }} />;
@@ -168,7 +178,7 @@ function ShellInner({ toast }: { toast: (m: string, k?: string) => void }) {
       <StatusBar style="light" hidden={route === 'match'} />
       {route === 'tabs' ? (
         <View style={{ flex: 1 }}>
-          <Space theme={tab === 'home' ? 'hub' : 'base'} dim={tab === 'home' ? 0 : .15} stars={hq} />
+          <Space theme={tab === 'home' ? 'stadium' : tab === 'play' || tab === 'team' ? 'stadium2' : 'portal'} dim={tab === 'home' ? 0 : .08} stars={hq} />
           <Animated.View key={tab} entering={FadeIn.duration(240)} exiting={FadeOut.duration(120)} style={{ flex: 1 }}>
             {tab === 'home' ? <Home top={top} bottom={bottom} onOnline={openOnline} onMode={openMode} onTab={goTab} onDaily={() => setModal({ k: 'daily' })} onSettings={() => setSheet({ k: 'settings' })} onChest={() => openChest(false)} dailyReady={dailyReady} chestReady={chestReady} />
               : tab === 'play' ? <Play top={top} bottom={bottom} onMode={openMode} onOnline={openOnline} />
@@ -212,6 +222,7 @@ function ShellInner({ toast }: { toast: (m: string, k?: string) => void }) {
       <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: '#02030b', zIndex: 90 }, veilSt]} />
 
       {auth.recovery ? <RecoveryModal toast={toast} /> : null}
+      {authOpen && !intro ? <AuthScreen initial={authOpen} toast={toast} onClose={() => setAuthOpen(null)} /> : null}
       {intro ? <Intro onDone={() => setIntro(false)} /> : null}
     </View>
     </NavCtx.Provider>

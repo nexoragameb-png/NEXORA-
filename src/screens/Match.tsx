@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Engine, MatchCfg } from '../game/engine';
 import { computeView, frame, staticLayer, toWorld, View as GView } from '../game/render';
 import { FIELDS, Team } from '../game/data';
-import { BALL_IMG, FIELD_IMG, GOAL_IMG, TEAM_IMG } from '../game/assets';
+import { BALL_IMG, FIELD_IMG, FX, GOAL_IMG, TEAM_IMG } from '../game/assets';
 import { teamKey } from '../game/util';
 import { C, F } from '../ui/theme';
 import { Btn, Panel, Press, T } from '../ui/kit';
@@ -116,7 +116,8 @@ export default function Match({ cfg, teams, names, onFinish, onQuit, fx = true }
       ) : null}
       {/* goal banner */}
       <Animated.View pointerEvents="none" style={[s.banner, { opacity: bOp, transform: [{ scale: bScale }] }]}>
-        <T s={bText.t} style={{ fontFamily: F.title, fontSize: 54, letterSpacing: 4, color: '#fff', textShadowColor: bText.c, textShadowRadius: 24 }} />
+        {bText.t === 'گل!' ? <Image source={FX.goal} style={{ width: 300, height: 184 }} resizeMode="contain" />
+          : <T s={bText.t} style={{ fontFamily: F.title, fontSize: 54, letterSpacing: 4, color: '#fff', textShadowColor: bText.c, textShadowRadius: 24 }} />}
         {bText.s ? <T s={bText.s} style={{ fontFamily: F.head, fontSize: 13, letterSpacing: 3, color: bText.c, marginTop: 4 }} /> : null}
       </Animated.View>
       {paused ? (

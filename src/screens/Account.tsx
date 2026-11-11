@@ -11,11 +11,12 @@ import { useAuth } from '../net/auth';
 import { Avatar, Field, S, TS } from '../online/ui';
 import { pickAndUpload } from '../net/media';
 import { supabase } from '../net/supabase';
+import { useNav } from '../nav';
 
 const emailOk = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e.trim());
 
 export default function Account({ toast }: { toast: (m: string, k?: string) => void }) {
-  const a = useAuth();
+  const a = useAuth(); const nav = useNav();
   const [mode, setMode] = useState<'up' | 'in' | 'forgot'>('up');
   const [email, setEmail] = useState(''); const [pass, setPass] = useState(''); const [pass2, setPass2] = useState('');
   const [name, setName] = useState(''); const [editName, setEditName] = useState(false);
@@ -97,6 +98,7 @@ export default function Account({ toast }: { toast: (m: string, k?: string) => v
         </View>
       ) : !signedEmail ? (
         <View style={{ marginTop: S.m }}>
+          {nav.openAuth ? <Btn label="ثبت‌نام / ورود (صفحه‌ی کامل)" small colors={G.violet} onPress={() => nav.openAuth?.('up')} style={{ marginBottom: S.m }} /> : null}
           <Segment value={mode} onChange={v => { setMode(v); setErr(null); }} items={[['up', a.isGuest ? 'ثبت ایمیل' : 'ثبت‌نام'], ['in', 'ورود'], ['forgot', 'فراموشی رمز']]} />
           <T s={mode === 'up' ? (a.isGuest ? 'با ثبت ایمیل، پیشرفت حساب مهمان حفظ می‌شود و روی هر گوشی وارد می‌شوی.' : 'حساب بساز تا پیشرفتت روی سرور ذخیره شود.')
             : mode === 'in' ? (a.isGuest ? 'ورود به حساب دیگر، حساب مهمان فعلی را کنار می‌گذارد.' : 'با ایمیل و رمز وارد شو.') : 'ایمیلت را وارد کن تا لینک تغییر رمز برایت ارسال شود.'}

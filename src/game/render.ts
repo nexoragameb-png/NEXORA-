@@ -98,15 +98,18 @@ function sprites(team: 0 | 1, logo: SkImage | null) {
   const disc = makeImg(SPR, SPR, c => {
     const ring = P(); ring.setShader(Skia.Shader.MakeSweepGradient(R, R, TEAM_RING[team].map(s => col(s)), null, TileMode.Clamp));
     c.drawCircle(R, R, r, ring);
-    const dk = P(); dk.setColor(col('#050816')); c.drawCircle(R, R, r * .87, dk);
     if (logo) {
-      c.save(); c.clipRRect(Skia.RRectXY(Skia.XYWHRect(R - r * .84, R - r * .84, r * 1.68, r * 1.68), r * .84, r * .84), ClipOp.Intersect, true);
-      c.drawImageRectOptions(logo, Skia.XYWHRect(0, 0, logo.width(), logo.height()), Skia.XYWHRect(R - r * .9, R - r * .9, r * 1.8, r * 1.8), FilterMode.Linear, MipmapMode.Linear, null);
-      c.restore();
+      // v2.0.1 metallic NX discs: the art already carries its own rim + lighting, so it fills the piece;
+      // a thin team-coloured ring (blue / red) keeps the two sides readable at a glance.
+      const dk = P(); dk.setColor(col('#050816')); c.drawCircle(R, R, r * .9, dk);
+      c.drawImageRectOptions(logo, Skia.XYWHRect(0, 0, logo.width(), logo.height()), Skia.XYWHRect(R - r * .93, R - r * .93, r * 1.86, r * 1.86), FilterMode.Linear, MipmapMode.Linear, null);
+    } else {
+      const dk = P(); dk.setColor(col('#050816')); c.drawCircle(R, R, r * .87, dk);
+      const edge = P(); edge.setStyle(PaintStyle.Stroke); edge.setStrokeWidth(3); edge.setColor(col('#000000', .35)); c.drawCircle(R, R, r * .87, edge);
     }
-    const edge = P(); edge.setStyle(PaintStyle.Stroke); edge.setStrokeWidth(3); edge.setColor(col('#000000', .35)); c.drawCircle(R, R, r * .87, edge);
   })!;
   const gloss = makeImg(SPR, SPR, c => {
+    if (logo) { const sp = P(); sp.setStyle(PaintStyle.Stroke); sp.setStrokeCap(StrokeCap.Round); sp.setStrokeWidth(4); sp.setColor(col('#ffffff', .35)); c.drawArc(Skia.XYWHRect(R - r * .95, R - r * .95, r * 1.9, r * 1.9), 205, 60, false, sp); return; }
     const gl = P(); gl.setShader(Skia.Shader.MakeRadialGradient({ x: R - r * .35, y: R - r * .45 }, r * .95, [col('#ffffff', .42), col('#ffffff', .08), col('#ffffff', 0)], [0, .45, 1], TileMode.Clamp));
     c.drawCircle(R, R, r * .86, gl);
     const sp = P(); sp.setStyle(PaintStyle.Stroke); sp.setStrokeCap(StrokeCap.Round); sp.setStrokeWidth(5); sp.setColor(col('#ffffff', .6));

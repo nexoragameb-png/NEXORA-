@@ -60,3 +60,11 @@ Online multiplayer/backend from the web build is not part of this version (offli
 - Match graphics: goal shockwave + glowing goal line, additive halo on a fast ball (pre-rendered sprites; disabled in the low-quality "Smooth" mode).
 - Offline: vs bot (quick, NEXORA Cup — champion now gets 20 gems instead of coins —, galaxy, training) and local 2-player.
 - Build: R8 keep rules for LiveKit/WebRTC through `expo-build-properties`; splash via the `expo-splash-screen` plugin; `expo-system-ui`.
+
+## v2.0.1
+- **Rooms start for real**: a lobby / club-challenge host can start as soon as everyone seated is ready; empty seats are played by the host's bot (friendly, unranked, `matches.bots`). Quick / arena searches offer "play the bot" after 20 s (`start_bot_match`). Auto-seat alternates blue/red so two friends in a 2v2 face each other. Tournament and duel rooms still need full sides.
+- **Sign-up screen** (`src/screens/AuthScreen.tsx`): username + e-mail + password with live username check (`username_available`), sign-in, forgot password, guest → account upgrade keeping progress. Shown once after the intro, then from Profile / Settings. Supabase e-mail auto-confirm is on (no SMTP configured).
+- **One disc style**: only the 31 metallic NX discs (18 clubs, 13 national teams) in `assets/g/teams`; catalog, prices (130–300 gems, 9 free starters), stats and packs in `supabase/schema_v4.sql` + `DISC_META` in `src/game/data.ts`.
+- New backgrounds (`assets/g/bg`: stadium for Home/Play/Team/online, purple portal for Shop/Profile/social) with a dark scrim; neon GOAL overlay and START/READY/PLAY icons (`assets/g/fx`).
+- Discs are 16% bigger on the pitch (`PR` 49 → 57).
+- SQL: run `supabase/schema_v4.sql` after v3 (idempotent).

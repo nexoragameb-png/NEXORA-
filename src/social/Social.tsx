@@ -2,6 +2,7 @@
 import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { FlatList, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { UI2 } from '../game/assets';
+import { TEAMS } from '../game/data';
 import { Btn, Img, Panel, Press, Segment, T, Toggle } from '../ui/kit';
 import { Sheet, SheetHandle } from '../ui/Chrome';
 import { C, F, G, fa } from '../ui/theme';
@@ -190,7 +191,7 @@ function Discover({ toast, onOpen }: { toast: (m: string, k?: string) => void; o
 }
 
 // ======================= clubs =======================
-export const CLUB_EMBLEMS = Array.from({ length: 16 }, (_, i) => `emb${i}`);
+export const CLUB_EMBLEMS = TEAMS.map(t => t.id);
 function Clubs({ bottom, toast }: { bottom: number; toast: (m: string, k?: string) => void }) {
   const { profile } = useAuth(); const nav = useNav();
   const [rows, setRows] = useState<any[] | null>(null);
@@ -242,7 +243,7 @@ function Clubs({ bottom, toast }: { bottom: number; toast: (m: string, k?: strin
 function CreateClub({ toast, onDone }: { toast: (m: string, k?: string) => void; onDone: (id: string) => void }) {
   const { profile } = useAuth();
   const [name, setName] = useState(''); const [tag, setTag] = useState(''); const [desc, setDesc] = useState('');
-  const [emblem, setEmblem] = useState('emb0'); const [policy, setPolicy] = useState<'open' | 'request' | 'invite'>('open'); const [busy, setBusy] = useState(false);
+  const [emblem, setEmblem] = useState('club0'); const [policy, setPolicy] = useState<'open' | 'request' | 'invite'>('open'); const [busy, setBusy] = useState(false);
   const go = async () => {
     if (name.trim().length < 3 || name.trim().length > 24) { toast('نام باشگاه ۳ تا ۲۴ کاراکتر', 'err'); return; }
     if (!/^[A-Z0-9]{2,5}$/.test(tag)) { toast('تگ: ۲ تا ۵ حرف/عدد انگلیسی بزرگ', 'err'); return; }

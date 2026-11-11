@@ -3,7 +3,7 @@ import { ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native'
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSequence, withSpring, withTiming } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { TEAM_IMG, UI2 } from '../game/assets';
-import { TEAMS } from '../game/data';
+import { TEAMS, teamPrice } from '../game/data';
 import { CHEST_EVERY, ChestPrize, Item, allItems, dailyDeals, grant } from '../game/meta';
 import { teamKey } from '../game/util';
 import { useStore } from '../store';
@@ -23,14 +23,14 @@ function Shop({ top, bottom, toast, onChest }: { top: number; bottom: number; to
   const [kind, setKind] = useState<'team' | 'ball' | 'field'>('team');
   const items = useMemo(() => allItems(p), [p.ownedTeams, p.ownedBalls, p.ownedFields]);
   const deals = useMemo(() => dailyDeals(p), [p.ownedTeams, p.ownedBalls, p.ownedFields]);
-  const legends = TEAMS.filter(t => t.cat === 'leg');
+  const legends = TEAMS.filter(t => teamPrice(t) >= 250);
   const now = Date.now(), freeIn = Math.max(0, p.lastChest + CHEST_EVERY - now);
   const buy = (it: Item) => {
     if (p.coins < it.price) { toast('سکه کافی نداری', 'err'); buzz('medium'); return; }
     set(q => ({ coins: q.coins - it.price, ...grant(it)(q) })); sfx('goal'); buzz('success'); toast(`${it.name} باز شد!`, 'ok');
   };
   const dz = useDiscs(); const auth = useAuth();
-  const buyDisc = useBuyDisc(toast, id => { set({ team: id }); sfx('win'); buzz('success'); });
+  const buyDisc = useBuyDisc(toast, id => { set(q => ({ team: id, ownedTeams: q.ownedTeams.includes(id) ? q.ownedTeams : [...q.ownedTeams, id] })); sfx('win'); buzz('success'); });
   const gemDiscs = useMemo(() => Object.values(dz.catalog).filter(d => d.price_gems > 0 && !dz.owned.has(d.id)).sort((a, b) => a.price_gems - b.price_gems), [dz.catalog, dz.owned]);
   const cell = (W - 32 - 16) / 3;
   const list = items.filter(i => i.kind === kind);

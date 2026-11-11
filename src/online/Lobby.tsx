@@ -4,7 +4,7 @@ import { ScrollView, Share, StyleSheet, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { FIELD_THUMB, UI2 } from '../game/assets';
+import { FIELD_THUMB, FX, UI2 } from '../game/assets';
 import { FIELDS } from '../game/data';
 import { Btn, Img, Panel, Press, Segment, T, Toggle } from '../ui/kit';
 import { Sheet, SheetHandle } from '../ui/Chrome';
@@ -46,7 +46,11 @@ function LobbyBody({ link, onLeave, onWatch, toast }: Props) {
   const amPlayer = meP?.role === 'player';
   const full = seats[0].every(Boolean) && seats[1].every(Boolean);
   const notReady = st.players.filter(p => p.role === 'player' && !p.ready && p.user_id !== room.host);
-  const canStart = isHost && full && notReady.length === 0 && room.status === 'waiting';
+  // v2.0.1: lobby / club rooms start as soon as everyone seated is ready — empty seats are played by bots
+  // (friendly, unranked). Tournament rooms still need both sides complete.
+  const seated = seats[0].filter(Boolean).length + seats[1].filter(Boolean).length;
+  const botsOk = !room.tournament_match_id;
+  const canStart = isHost && amPlayer && (full || botsOk) && seated > 0 && notReady.length === 0 && room.status === 'waiting';
   const speaking = new Set(v.speaking);
 
   const run = async (key: string, fn: () => Promise<any>, ok?: string) => {
@@ -85,7 +89,11 @@ function LobbyBody({ link, onLeave, onWatch, toast }: Props) {
     return () => clearInterval(id);
   }, [auto, amPlayer]);
 
-  const reason = !full ? 'منتظر پر شدن جایگاه‌ها…' : notReady.length ? `منتظر آماده شدن ${fa(notReady.length)} بازیکن…` : '';
+  const reason = !amPlayer ? 'برای شروع، روی یک جایگاه بنشین'
+    : notReady.length ? `منتظر آماده شدن ${fa(notReady.length)} بازیکن…`
+    : !full ? (botsOk ? `${fa(n * 2 - seated)} جایگاه خالی را ربات بازی می‌کند · بازی دوستانه (بدون امتیاز)` : 'منتظر پر شدن جایگاه‌ها…') : '';
+  const botStart = () => run('bots', async () => { await rpc<string>('start_bot_match', { p_room: room.id }); buzz('heavy'); });
+  const botsAllowed = room.kind === 'quick' || room.kind === 'arena';
   const playing = room.status === 'playing';
 
   return (
@@ -198,7 +206,7 @@ function LobbyBody({ link, onLeave, onWatch, toast }: Props) {
       <View style={[s.bar, { paddingBottom: Math.max(ins.bottom, S.m) }]}>
         <LinearGradient pointerEvents="none" colors={['transparent', 'rgba(2,4,14,.92)', 'rgba(2,4,14,.98)']} style={StyleSheet.absoluteFill} />
         {playing ? (
-          <Btn label="ورود به بازی زنده" onPress={onWatch} colors={G.red} />
+          <Btn label="ورود به بازی زنده" icon={FX.play} onPress={onWatch} colors={G.red} />
         ) : room.kind === 'social' ? (
           <T s="اتاق گفتگو · با چت متنی و صوتی با هم حرف بزنید" style={{ fontSize: TS.small, color: C.dim, textAlign: 'center', paddingVertical: S.m }} />
         ) : matchmade ? (
@@ -210,16 +218,19 @@ function LobbyBody({ link, onLeave, onWatch, toast }: Props) {
             <View style={{ alignItems: 'center' }}>
               <T s={`در جستجوی حریف ${room.mode}… (${fa(st.players.filter(p => p.role === 'player').length)}/${fa(n * 2)}) · ${fa(Math.floor(waited / 60))}:${String(waited % 60).padStart(2, '0').replace(/\d/g, d => '۰۱۲۳۴۵۶۷۸۹'[+d])}`} style={{ fontFamily: F.bold, fontSize: TS.body, color: C.cyan, textAlign: 'center' }} />
               {waited > 60 ? <T s="کسی پیدا نشد؟ می‌توانی صبر کنی یا حالت دیگری را امتحان کنی" style={{ fontSize: TS.cap, color: C.dim, marginTop: 4, textAlign: 'center' }} /> : null}
+              {botsAllowed && waited >= 20 && amPlayer ? (
+                <Btn label={busy === 'bots' ? 'در حال شروع…' : 'بازی با ربات (بدون امتیاز)'} icon={FX.play} small colors={G.violet} onPress={botStart} disabled={!!busy} style={{ marginTop: S.s, alignSelf: 'stretch' }} />
+              ) : null}
               <Btn label="لغو جستجو" small colors={G.dark} onPress={onLeave} style={{ marginTop: S.s, width: 160 }} />
             </View>
           )
         ) : isHost ? (
           <>
             {reason ? <T s={reason} style={{ fontSize: TS.cap, color: C.dim, textAlign: 'center', marginBottom: S.s }} /> : null}
-            <Btn label={busy === 'start' ? 'در حال شروع…' : 'شروع بازی'} onPress={start} disabled={!canStart || !!busy} colors={canStart ? G.gold : G.dark} />
+            <Btn label={busy === 'start' ? 'در حال شروع…' : full ? 'شروع بازی' : 'شروع بازی با ربات'} icon={FX.start} onPress={start} disabled={!canStart || !!busy} colors={canStart ? G.gold : G.dark} />
           </>
         ) : amPlayer ? (
-          <Btn label={meP?.ready ? 'آماده‌ام ✓' : 'اعلام آمادگی'} onPress={ready} disabled={!!busy} colors={meP?.ready ? G.green : G.primary} />
+          <Btn label={meP?.ready ? 'آماده‌ام ✓ (لغو)' : 'اعلام آمادگی'} icon={FX.ready} onPress={ready} disabled={!!busy} colors={meP?.ready ? G.green : G.primary} />
         ) : (
           <T s="برای بازی روی یک جایگاه خالی بزن" style={{ fontSize: TS.small, color: C.dim, textAlign: 'center', paddingVertical: S.m }} />
         )}

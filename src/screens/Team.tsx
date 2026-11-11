@@ -58,7 +58,7 @@ function Discs({ bottom, toast }: { bottom: number; toast: Toast }) {
       if (auth.profile && g < price) { toast(`${fa(price - g)} الماس دیگر لازم داری · چالش‌های روزانه و تورنمنت‌ها الماس می‌دهند`, 'err'); buzz('medium'); return; }
       const r = await dz.buy(ft.id);
       if (!r.ok) { toast(r.error!, 'err'); return; }
-      await dz.equip(ft.id); set({ team: ft.id });
+      await dz.equip(ft.id); set(q => ({ team: ft.id, ownedTeams: q.ownedTeams.includes(ft.id) ? q.ownedTeams : [...q.ownedTeams, ft.id] }));
       sfx('win'); buzz('success'); toast(`${ft.name} باز شد! · 💎 ${fa(r.gems ?? 0)} باقی‌مانده`, 'ok');
     } finally { setBusy(false); }
   };

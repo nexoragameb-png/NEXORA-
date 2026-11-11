@@ -70,6 +70,7 @@ export default function OnlineRoot({ entry, onExit, toast, fx }: Props) {
     if (!auth.uid) return;
     if (link && link.id === room.id) { setStack(s => [...s.filter(x => x.k !== 'lobby' && x.k !== 'match' && x.k !== 'result'), { k: 'lobby' }]); return; }
     link?.destroy();
+    setLs(null); // never let the previous room's state drive navigation for the new one
     firstLoad.current = true; skip.current = null;
     const l = new RoomLink(room.id, auth.uid, auth.profile?.username || 'Pilot');
     setLink(l);
@@ -86,6 +87,7 @@ export default function OnlineRoot({ entry, onExit, toast, fx }: Props) {
   // room state → navigation
   useEffect(() => {
     if (!link || !ls || !ls.loaded) return;
+    if (ls.room && ls.room.id !== link.id) return; // stale state from a previous room
     const room = ls.room;
     if (ls.gone) {
       if (top.k === 'lobby' || top.k === 'result') { toast(room ? 'از اتاق خارج شدی' : 'اتاق بسته شد', 'err'); link.destroy(); setLink(null); dropRoom(); }
@@ -141,7 +143,7 @@ export default function OnlineRoot({ entry, onExit, toast, fx }: Props) {
   return (
     <NavCtx.Provider value={nav}>
     <View style={{ flex: 1, backgroundColor: C.bg }}>
-      {top.k !== 'match' ? <Space theme={top.k === 'result' ? (top.o.myTeam !== null && top.o.winner === top.o.myTeam ? 'win' : top.o.winner === -1 || top.o.myTeam === null ? 'system' : 'lose') : 'base'} dim={.1} stars={fx} /> : null}
+      {top.k !== 'match' ? <Space theme={top.k === 'result' ? (top.o.myTeam !== null && top.o.winner === top.o.myTeam ? 'win' : top.o.winner === -1 || top.o.myTeam === null ? 'system' : 'lose') : top.k === 'social' || top.k === 'chat' || top.k === 'club' || top.k === 'user' ? 'portal' : top.k === 'lobby' || top.k === 'hub' ? 'stadium' : 'stadium2'} dim={.1} stars={fx} /> : null}
       <Animated.View key={key} entering={FadeIn.duration(220)} exiting={FadeOut.duration(120)} style={{ flex: 1 }}>
         {top.k === 'hub' ? <Hub onBack={back} onRoom={enterRoom} toast={toast} onNav={n => push({ k: n })} />
           : top.k === 'lobby' && link ? <Lobby link={link} toast={toast} onLeave={() => setConfirmLeave(true)} onWatch={() => { const m = ls?.room?.current_match; if (m) { before.current = auth.profile; skip.current = null; push({ k: 'match', id: m }); } }} />

@@ -14,9 +14,10 @@ type Ctx = {
   ready: boolean; configured: boolean; session: Session | null; uid: string | null; email: string | null; isGuest: boolean;
   profile: OnlineProfile | null; recovery: boolean;
   ensure: () => Promise<string | null>;
-  signUp: (email: string, password: string) => Promise<Res>;
+  signUp: (email: string, password: string, username?: string) => Promise<Res>;
   signIn: (email: string, password: string) => Promise<Res>;
-  upgrade: (email: string, password: string) => Promise<Res>;
+  upgrade: (email: string, password: string, username?: string) => Promise<Res>;
+  usernameFree: (name: string) => Promise<boolean | null>;
   resetPassword: (email: string) => Promise<Res>;
   setNewPassword: (password: string) => Promise<Res>;
   resend: (email: string) => Promise<Res>;
@@ -113,22 +114,37 @@ export function AuthProvider({ children, toast }: { children: React.ReactNode; t
   }, []);
 
   const wrap = (fn: () => Promise<Res>) => fn().catch((e): Res => ({ ok: false, error: errFa(e) }));
-  const signUp = useCallback((email: string, password: string) => wrap(async () => {
-    const { data, error } = await supabase.auth.signUp({ email: email.trim(), password, options: { emailRedirectTo: authRedirect() } });
+  // username is stored in auth metadata; the on_auth_user_created trigger creates the profiles row with it
+  const signUp = useCallback((email: string, password: string, username?: string) => wrap(async () => {
+    const u = username?.trim();
+    const { data, error } = await supabase.auth.signUp({ email: email.trim(), password, options: { emailRedirectTo: authRedirect(), data: u ? { username: u } : undefined } });
     if (error) throw error;
-    // e-mail confirmation is ON: no session until the link is opened
+    // Supabase answers a repeated sign-up of an existing address with a user that has no identities
+    if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) throw new Error('User already registered');
+    // only when e-mail confirmation is switched on: no session until the link is opened
     if (!data.session) return { ok: true, info: 'confirm' };
+    if (u && data.user) await supabase.from('profiles').update({ username: u }).eq('id', data.user.id).then(() => {}, () => {});
     return { ok: true };
   }), []);
   const signIn = useCallback((email: string, password: string) => wrap(async () => {
     const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
     if (error) throw error; return { ok: true };
   }), []);
-  const upgrade = useCallback((email: string, password: string) => wrap(async () => {
-    const { error } = await supabase.auth.updateUser({ email: email.trim(), password }, { emailRedirectTo: authRedirect() });
+  // guest → e-mail account: same user id, so all online progress is kept
+  const upgrade = useCallback((email: string, password: string, username?: string) => wrap(async () => {
+    const { data, error } = await supabase.auth.updateUser({ email: email.trim(), password, data: username?.trim() ? { username: username.trim() } : undefined }, { emailRedirectTo: authRedirect() });
     if (error) throw error;
-    return { ok: true, info: 'confirm' };
+    const id = data.user?.id;
+    if (id && username?.trim()) { const r = await supabase.from('profiles').update({ username: username.trim() }).eq('id', id); if (r.error) throw r.error; }
+    if (id) { const { data: pr } = await supabase.from('profiles').select('*').eq('id', id).maybeSingle(); if (pr) setProfile(pr as OnlineProfile); }
+    await supabase.auth.refreshSession().catch(() => {});
+    // with e-mail confirmation off the address is active immediately; otherwise it waits for the link
+    return data.user?.email?.toLowerCase() === email.trim().toLowerCase() ? { ok: true } : { ok: true, info: 'confirm' };
   }), []);
+  const usernameFree = useCallback(async (name: string) => {
+    const { data, error } = await supabase.rpc('username_available', { p_name: name.trim() });
+    return error ? null : !!data;
+  }, []);
   const resetPassword = useCallback((email: string) => wrap(async () => {
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: authRedirect() });
     if (error) throw error; return { ok: true };
@@ -160,7 +176,7 @@ export function AuthProvider({ children, toast }: { children: React.ReactNode; t
   const v = useMemo<Ctx>(() => ({
     ready, configured: ONLINE_CONFIGURED, session, uid, email: session?.user?.email || null,
     isGuest: !!session?.user && (session.user.is_anonymous ?? !session.user.email), profile, recovery,
-    ensure, signUp, signIn, upgrade, resetPassword, setNewPassword, resend, signOut, setUsername, refreshProfile, endRecovery: () => setRecovery(false),
-  }), [ready, session, uid, profile, recovery, ensure, signUp, signIn, upgrade, resetPassword, setNewPassword, resend, signOut, setUsername, refreshProfile]);
+    ensure, signUp, signIn, upgrade, usernameFree, resetPassword, setNewPassword, resend, signOut, setUsername, refreshProfile, endRecovery: () => setRecovery(false),
+  }), [ready, session, uid, profile, recovery, ensure, signUp, signIn, upgrade, usernameFree, resetPassword, setNewPassword, resend, signOut, setUsername, refreshProfile]);
   return <AuthCtx.Provider value={v}>{children}</AuthCtx.Provider>;
 }

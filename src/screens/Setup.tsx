@@ -21,9 +21,10 @@ export const MODES: Mode[] = [
 ];
 
 export type Launch = { cfg: MatchCfg; teams: [Team, Team]; names: [string, string]; mode: ModeKey; stage?: number };
-const pool = () => TEAMS.filter(t => t.cat === 'club' || t.cat === 'nat' || t.cat === 'elite');
+const pool = () => TEAMS;
 export const pickOpp = () => { const p = pool(); return p[Math.floor(Math.random() * p.length)]; };
-const boosted = (t: Team) => t.cat === 'vip' || t.cat === 'leg';
+// every disc now has real power/accuracy stats; the old VIP speed boost is retired
+const boosted = (_t: Team) => false;
 
 export function buildLaunch(mode: ModeKey, p: Profile, opt: { lvl: 0 | 1 | 2; rule: 'g3' | 'g5' | 't3'; tt: number; opp: Team; stage?: number }): Launch {
   const me = teamById(p.team), oppForm = Math.floor(Math.random() * FORMS.length);

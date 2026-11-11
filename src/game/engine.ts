@@ -4,7 +4,7 @@
 import { FIELDS, GS, slots, Field } from './data';
 
 export const K = 1.27;
-export const PR = 49;      // piece radius (world units) — enlarged for touch + readability
+export const PR = 57;      // piece radius (world units) — v2.0.1: +16% (was 49) so the metallic discs read clearly on the pitch
 export const BR = 25.5;    // ball radius
 export const RC = 70;      // rounded corner radius
 export const LMAX = 210;   // max drag length (world units) for full power

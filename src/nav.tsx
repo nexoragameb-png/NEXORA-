@@ -10,6 +10,7 @@ export type Nav = {
   openChat: (conversationId: string) => void;
   openClub: (clubId: string) => void;
   openTeam: () => void;
+  openAuth?: (mode?: 'up' | 'in') => void;
 };
 export const NavCtx = createContext<Nav>({ toast: () => {}, openOnline: () => {}, openProfile: () => {}, openChat: () => {}, openClub: () => {}, openTeam: () => {} });
 export const useNav = () => useContext(NavCtx);

@@ -19,9 +19,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Body, Engine, EngineEvent, MatchCfg, Phase } from '../game/engine';
 import { computeView, frame, staticLayer, toWorld, View as GView } from '../game/render';
-import { FIELDS, Team } from '../game/data';
-import { BALL_IMG, FIELD_IMG, GOAL_IMG, TEAM_IMG, UI2 } from '../game/assets';
-import { teamKey } from '../game/util';
+import { FIELDS, TEAMS, Team } from '../game/data';
+import { BALL_IMG, FIELD_IMG, FX, GOAL_IMG, TEAM_IMG, UI2 } from '../game/assets';
+import { hash, teamKey } from '../game/util';
 import { Btn, Img, Panel, Press, T } from '../ui/kit';
 import { C, F, G, fa } from '../ui/theme';
 import { buzz, playLoop, sfx, stopLoop } from '../sound';
@@ -72,6 +72,7 @@ export default function OnlineMatch({ link, matchId, onFinish, onExit, toast, fx
   const cfg = useMemo(() => {
     const c = cfgFromRoom(room0), cap = (t: 0 | 1) => teamOf(ls.players, t)[0];
     c.stats = [discStats(discOf(cap(0))), discStats(discOf(cap(1)))];
+    c.aiLvl = 1; // bot level for any side nobody is controlling
     return c;
   }, []);
   const eng = useMemo(() => new Engine(cfg), []);
@@ -80,9 +81,13 @@ export default function OnlineMatch({ link, matchId, onFinish, onExit, toast, fx
     const meP = ls.players.find(p => p.user_id === link.me);
     const myTeam = meP?.role === 'player' && (meP.team === 0 || meP.team === 1) ? meP.team : null;
     const nm = (t: RoomPlayer[], d: string) => (t[0]?.profiles?.username || d) + (t.length > 1 ? ` +${fa(t.length - 1)}` : '');
-    const names: [string, string] = [nm(t0, 'آبی'), nm(t1, 'قرمز')];
-    const teams: [Team, Team] = [teamOfAvatar(discOf(t0[0])), teamOfAvatar(discOf(t1[0]))];
-    return { myTeam: myTeam as 0 | 1 | null, names, teams, ranked: room0.ranked };
+    const names: [string, string] = [nm(t0, 'ربات'), nm(t1, 'ربات')];
+    // a side with nobody seated is played by the host's bot with its own disc
+    const botTeam = (other: Team) => { const i = hash(matchId) % TEAMS.length; return TEAMS[i].id === other.id ? TEAMS[(i + 1) % TEAMS.length] : TEAMS[i]; };
+    const a0 = t0.length ? teamOfAvatar(discOf(t0[0])) : null, a1 = t1.length ? teamOfAvatar(discOf(t1[0])) : null;
+    const teams: [Team, Team] = [a0 || botTeam(a1 || TEAMS[0]), a1 || botTeam(a0 || TEAMS[0])];
+    if (cfg.stats) { if (!a0) cfg.stats[0] = discStats(teams[0].id); if (!a1) cfg.stats[1] = discStats(teams[1].id); }
+    return { myTeam: myTeam as 0 | 1 | null, names, teams, ranked: room0.ranked && !!a0 && !!a1 && t0.length === t1.length };
   }, []);
   const flipped = start.myTeam === 1;
   const playersRef = useRef(ls.players); playersRef.current = ls.players;
@@ -397,7 +402,8 @@ export default function OnlineMatch({ link, matchId, onFinish, onExit, toast, fx
       ) : null}
 
       <Animated.View pointerEvents="none" style={[s.banner, { opacity: bOp, transform: [{ scale: bScale }] }]}>
-        <T s={bText.t} style={{ fontFamily: F.title, fontSize: 54, color: '#fff', textShadowColor: bText.c, textShadowRadius: 24 }} />
+        {bText.t === 'گل!' ? <Img src={FX.goal} style={{ width: 300, height: 184 }} fit="contain" />
+          : <T s={bText.t} style={{ fontFamily: F.title, fontSize: 54, color: '#fff', textShadowColor: bText.c, textShadowRadius: 24 }} />}
         {bText.s ? <T s={bText.s} n={1} style={{ fontFamily: F.head, fontSize: 13, color: bText.c, marginTop: 4 }} /> : null}
       </Animated.View>
 

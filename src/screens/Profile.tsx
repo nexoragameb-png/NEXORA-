@@ -6,15 +6,19 @@ import { TEAM_IMG, UI, UI2 } from '../game/assets';
 import { ACHS } from '../game/meta';
 import { teamById, teamKey } from '../game/util';
 import { LEAGUE_FA, league, level, useStore } from '../store';
-import { Bar, Btn, Enter, Float, Img, Panel, Pulse, T, Title } from '../ui/kit';
+import { Bar, Btn, Enter, Float, Img, Panel, Press, Pulse, T, Title } from '../ui/kit';
 import { C, F, G, fa } from '../ui/theme';
 import { buzz, sfx } from '../sound';
+import { useAuth } from '../net/auth';
+import { useNav } from '../nav';
 
 const MEDAL = ['medal_bronze', 'medal_silver', 'medal_gold', 'medal_epic', 'shield_epic', 'shield_crown'];
 
 function Profile({ top, bottom, toast }: { top: number; bottom: number; toast: (m: string, k?: string) => void }) {
   const { p, set } = useStore(); const lv = level(p.xp), lg = league(p.trophies), t = teamById(p.team);
   const [name, setName] = useState(p.name);
+  const auth = useAuth(); const nav = useNav();
+  const hasEmail = !!auth.uid && !auth.isGuest;
   const wr = p.played ? Math.round(p.wins / p.played * 100) : 0;
   const commit = () => set({ name: name.trim().slice(0, 16) || 'Pilot' });
   const stats: [any, string, string | number][] = [
@@ -45,6 +49,20 @@ function Profile({ top, bottom, toast }: { top: number; bottom: number; toast: (
           <T s={`${lv.cur} / ${lv.need} XP`} style={{ fontFamily: F.head, fontSize: 10, color: C.dim, marginTop: 4 }} />
         </Panel>
       </Enter>
+
+      {auth.configured ? (
+        <Enter i={1} style={{ paddingHorizontal: 16, marginTop: 10 }}>
+          <Panel style={{ padding: 12, flexDirection: 'row-reverse', alignItems: 'center' }} accent={hasEmail ? C.green : C.cyan} glow={!hasEmail}>
+            <Img src={UI2.c_profile} style={{ width: 46, height: 46 }} />
+            <View style={{ flex: 1, marginHorizontal: 10, alignItems: 'flex-end' }}>
+              <T s={hasEmail ? 'حساب آنلاین' : 'حساب کاربری نداری'} style={{ fontFamily: F.bold, fontSize: 15 }} />
+              <T s={hasEmail ? `${auth.profile?.username || ''} · ${auth.email}` : 'ثبت‌نام کن تا پیشرفت، دیسک‌ها و رتبه‌ات ذخیره شود'} n={1} style={{ fontSize: 11, color: C.dim, marginTop: 2 }} />
+            </View>
+            {hasEmail ? <Btn label="حساب" small colors={G.dark} onPress={() => nav.openAuth?.('in')} style={{ width: 90 }} />
+              : <View style={{ width: 118 }}><Btn label="ثبت‌نام" small colors={G.green} onPress={() => nav.openAuth?.('up')} /><Press onPress={() => nav.openAuth?.('in')} style={{ minHeight: 34, justifyContent: 'center' }}><T s="ورود" style={{ color: C.cyan, fontSize: 12, textAlign: 'center' }} /></Press></View>}
+          </Panel>
+        </Enter>
+      ) : null}
 
       <Enter i={1} style={{ paddingHorizontal: 16, marginTop: 10 }}>
         <Panel style={{ flexDirection: 'row-reverse', alignItems: 'center', padding: 12 }} accent={C.gold}>
