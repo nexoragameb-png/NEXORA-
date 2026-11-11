@@ -107,7 +107,8 @@ function ShellInner({ toast }: { toast: (m: string, k?: string) => void }) {
       const mult = [1, 1.5, 2.2][r.aiLvl] * (MULT[l.mode] ?? 1);
       if (l.mode === 'cup') { const st = l.stage || 0; cup = { stage: st, won: win, champion: win && st >= 2 }; }
       reward = { coins: Math.round((win ? 60 : draw ? 25 : 12) * mult + a * 5), xp: Math.round((win ? 50 : 20) * Math.max(.3, mult)), trophies: l.mode === 'train' ? 0 : win ? Math.round(20 * mult) : draw ? 0 : -8, gems: 0 };
-      if (cup?.champion) reward.coins += 400;
+      // tournament rewards are gems only (max 30): the offline NEXORA Cup champion gets 20 gems
+      if (cup?.champion) reward.gems += 20;
       const before = level(p.xp).level, after = level(p.xp + reward.xp).level; if (after > before) levelUp = after;
       const rw = reward;
       set(q => {
@@ -148,9 +149,9 @@ function ShellInner({ toast }: { toast: (m: string, k?: string) => void }) {
   const openOnline = useCallback((e: OnlineEntry = 'hub') => { setOnlineEntry(e); transition(() => { setSheet(null); setRoute('online'); }); }, []);
   const nav = React.useMemo(() => ({
     toast, openOnline,
-    openProfile: (_uid: string) => openOnline('ranks'),
-    openChat: (_c: string) => setTab('profile'),
-    openClub: (_c: string) => setTab('profile'),
+    openProfile: (id: string) => openOnline({ k: 'user', id }),
+    openChat: (id: string) => openOnline({ k: 'chat', id }),
+    openClub: (id: string) => openOnline({ k: 'club', id }),
     openTeam: () => setTab('team'),
   }), [toast, openOnline]);
   const goTab = useCallback((t: Tab) => setTab(t), []);

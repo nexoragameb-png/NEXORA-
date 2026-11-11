@@ -1,7 +1,8 @@
 // App-wide navigation helpers for overlays that can be opened from anywhere (public profile, chat, online area).
 import { createContext, useContext } from 'react';
 
-export type OnlineEntry = 'hub' | 'tours' | 'ranks' | 'arena' | 'challenges' | 'leagues';
+export type OnlineEntry = 'hub' | 'tours' | 'ranks' | 'arena' | 'challenges' | 'leagues' | 'social' | 'duels' | 'worldcup'
+  | { k: 'user' | 'chat' | 'club'; id: string };
 export type Nav = {
   toast: (m: string, k?: string) => void;
   openOnline: (e?: OnlineEntry) => void;

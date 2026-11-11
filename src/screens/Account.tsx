@@ -9,6 +9,8 @@ import { C, F, G, fa } from '../ui/theme';
 import { buzz } from '../sound';
 import { useAuth } from '../net/auth';
 import { Avatar, Field, S, TS } from '../online/ui';
+import { pickAndUpload } from '../net/media';
+import { supabase } from '../net/supabase';
 
 const emailOk = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e.trim());
 
@@ -40,6 +42,17 @@ export default function Account({ toast }: { toast: (m: string, k?: string) => v
       else { const r = await a.signUp(email, pass); if (done(r)) setSent(r.ok && r.info === 'confirm' ? 'confirm' : null); }
     } finally { setBusy(false); }
   };
+  const setPhoto = async (remove = false) => {
+    if (!a.uid) return;
+    setBusy(true);
+    try {
+      let url: string | null = null;
+      if (!remove) { const r = await pickAndUpload('avatars', a.uid, { size: 512, square: true }); if (!r.ok) { if (!r.cancelled) setErr(r.error); return; } url = r.url; }
+      const { error } = await supabase.from('profiles').update({ avatar_url: url }).eq('id', a.uid);
+      if (error) { setErr('ذخیره‌ی عکس ناموفق بود'); return; }
+      await a.refreshProfile(); toast(remove ? 'عکس پروفایل حذف شد' : 'عکس پروفایل عوض شد', 'ok'); buzz('success');
+    } finally { setBusy(false); }
+  };
   const saveName = async () => { setBusy(true); const r = await a.setUsername(name); setBusy(false); if (done(r, 'نام کاربری تغییر کرد')) setEditName(false); };
 
   const signedEmail = a.uid && !a.isGuest;
@@ -63,7 +76,13 @@ export default function Account({ toast }: { toast: (m: string, k?: string) => v
               <Btn label="انصراف" small colors={G.dark} onPress={() => { setEditName(false); setErr(null); }} style={{ flex: 1 }} />
             </View>
           </View>
-        ) : <Press onPress={() => { setName(a.profile!.username); setEditName(true); }} style={{ marginTop: S.s, minHeight: 44, justifyContent: 'center' }}><T s="✎ تغییر نام کاربری" style={{ color: C.cyan, fontSize: TS.small, textAlign: 'right' }} /></Press>
+        ) : (
+          <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', columnGap: S.l }}>
+            <Press onPress={() => { setName(a.profile!.username); setEditName(true); }} style={{ marginTop: S.s, minHeight: 44, justifyContent: 'center' }}><T s="✎ تغییر نام کاربری" style={{ color: C.cyan, fontSize: TS.small, textAlign: 'right' }} /></Press>
+            <Press onPress={() => setPhoto(false)} disabled={busy} style={{ marginTop: S.s, minHeight: 44, justifyContent: 'center' }}><T s={busy ? '…' : '📷 عکس پروفایل'} style={{ color: C.cyan, fontSize: TS.small }} /></Press>
+            {a.profile.avatar_url ? <Press onPress={() => setPhoto(true)} disabled={busy} style={{ marginTop: S.s, minHeight: 44, justifyContent: 'center' }}><T s="حذف عکس" style={{ color: C.red, fontSize: TS.small }} /></Press> : null}
+          </View>
+        )
       ) : null}
 
       {sent ? (
