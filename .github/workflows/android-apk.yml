@@ -1,0 +1,81 @@
+name: Android APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      NODE_OPTIONS: --max-old-space-size=6144
+      EXPO_NO_TELEMETRY: 1
+      CI: 1
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Install JS dependencies
+        run: npm ci
+
+      - name: Expo prebuild (android)
+        run: npx expo prebuild --platform android --no-install --clean
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Gradle properties
+        run: |
+          {
+            echo "org.gradle.jvmargs=-Xmx6g -XX:MaxMetaspaceSize=1536m -Dfile.encoding=UTF-8"
+            echo "org.gradle.parallel=true"
+            echo "org.gradle.caching=true"
+            echo "reactNativeArchitectures=arm64-v8a,armeabi-v7a"
+          } >> android/gradle.properties
+
+      - name: Build release APK (signed with the debug keystore — for testing)
+        working-directory: android
+        run: ./gradlew assembleRelease --no-daemon --stacktrace
+
+      - name: Rename APK
+        run: |
+          mkdir -p dist-apk
+          cp android/app/build/outputs/apk/release/*.apk "dist-apk/nexora-${{ github.run_number }}.apk"
+          ls -la dist-apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nexora-apk
+          path: dist-apk/*.apk
+          if-no-files-found: error
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: NEXORA build ${{ github.run_number }}
+          body: |
+            Test build of NEXORA (release APK signed with the debug keystore).
+            Commit: ${{ github.sha }}
+            Install: download the APK on your Android phone and allow "install unknown apps".
+          files: dist-apk/*.apk
+          make_latest: true
