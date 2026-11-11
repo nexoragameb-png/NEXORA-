@@ -50,13 +50,26 @@
           "microphonePermission": "NEXORA برای چت صوتی به میکروفون دسترسی دارد."
         }
       ],
-      "expo-dev-client"
+      "expo-dev-client",
+      "expo-status-bar",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#05040E",
+          "imageWidth": 200
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "extraProguardRules": "-keep class livekit.org.webrtc.** { *; }\n-keep class livekit.org.jni_zero.** { *; }\n-dontwarn livekit.org.jni_zero.**\n-dontwarn livekit.org.webrtc.**\n-keep class com.livekit.reactnative.** { *; }\n-keep class com.oney.WebRTCModule.** { *; }"
+          }
+        }
+      ]
     ],
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#05040E"
-    },
     "scheme": "nexora"
   }
 }
