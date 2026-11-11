@@ -49,6 +49,7 @@ jobs:
       - name: Gradle properties
         run: |
           {
+            echo ""   # prebuild leaves gradle.properties without a trailing newline
             echo "org.gradle.jvmargs=-Xmx6g -XX:MaxMetaspaceSize=1536m -Dfile.encoding=UTF-8"
             echo "org.gradle.parallel=true"
             echo "org.gradle.caching=true"
