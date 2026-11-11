@@ -12,8 +12,6 @@
   <a href="https://github.com/nexoragameb-png/NEXORA-/releases/latest"><img src="https://img.shields.io/github/v/release/nexoragameb-png/NEXORA-?label=%D8%AF%D8%A7%D9%86%D9%84%D9%88%D8%AF%20APK&style=for-the-badge&color=7c3aed" alt="دانلود" /></a>
   <img src="https://img.shields.io/badge/version-2.0.1-22c55e?style=for-the-badge" alt="version" />
   <img src="https://img.shields.io/badge/Android-APK-3ddc84?style=for-the-badge&logo=android&logoColor=white" alt="Android" />
-  <img src="https://img.shields.io/badge/Expo-SDK%2058-000020?style=for-the-badge&logo=expo&logoColor=white" alt="Expo" />
-  <img src="https://img.shields.io/badge/Supabase-Realtime-3ecf8e?style=for-the-badge&logo=supabase&logoColor=white" alt="Supabase" />
 </p>
 
 <div dir="rtl" align="right">
@@ -31,8 +29,6 @@
 </p>
 
 - آخرین فایل `nexora-*.apk` را از بخش **Assets** همان صفحه دانلود و نصب کن (نصب از منابع ناشناس باید فعال باشد).
-- هر بار که کد به شاخه‌ی `main` می‌رسد، GitHub Actions به‌صورت خودکار یک APK تازه می‌سازد و در [Releases](https://github.com/nexoragameb-png/NEXORA-/releases) منتشر می‌کند.
-- نسخه‌های فعلی، بیلد آزمایشی هستند و با کلید دیباگ امضا شده‌اند.
 
 ---
 
@@ -116,8 +112,8 @@
 
 ### 🎨 گرافیک
 
-- رندر زمین و دیسک‌ها با **Skia** روی GPU: سایه، ردّ نور توپ، موج انفجار گل و لرزش دوربین
-- توپ سه‌بعدی چرخان با شیدر اختصاصی
+- گرافیک روان و پرجزئیات: سایه، ردّ نور توپ، موج انفجار گل و لرزش دوربین
+- توپ سه‌بعدی چرخان
 - پس‌زمینه‌های استادیوم نئونی و پورتال بنفش با لایه‌ی تیره برای خوانایی
 - جلوه‌ی نئونی **GOAL** هنگام گل و آیکون‌های نئونی شروع و آمادگی در اتاق‌ها
 - اینتروی «پرواز به نکسورا» با پرش فضایی
@@ -129,67 +125,6 @@
 <p align="center">
   <img src="docs/readme/fx.webp" alt="جلوه‌ها" width="80%" />
 </p>
-
----
-
-## 🧰 فناوری‌ها
-
-| بخش | فناوری |
-|:---|:---|
-| اپلیکیشن | React Native 0.88 · Expo SDK 58 · TypeScript |
-| گرافیک | @shopify/react-native-skia · Reanimated · Expo Linear Gradient |
-| فیزیک | موتور اختصاصی دوبعدی (برخورد، اصطکاک، چرخش توپ، تیرک دروازه) |
-| بک‌اند | Supabase: Postgres · Auth · Realtime · Storage · pg_cron |
-| شبکه‌ی بازی | میزبان‌محور: میزبان شبیه‌سازی می‌کند و بقیه اسنپ‌شات‌ها را درون‌یابی می‌کنند |
-| صدا | LiveKit (چت صوتی) · expo-audio (جلوه‌ها و موسیقی) |
-| بیلد | GitHub Actions → APK اندروید در Releases |
-
----
-
-## 🛠️ اجرا و ساخت
-
-پیش‌نیازها: Node.js 22، npm و برای بیلد اندروید JDK 17 و Android SDK.
-
-```bash
-git clone https://github.com/nexoragameb-png/NEXORA-.git
-cd NEXORA-
-npm ci
-
-# اجرا در حالت توسعه (Development Build لازم است؛ ماژول‌های بومی مثل Skia و LiveKit در Expo Go نیستند)
-npx expo start
-
-# بررسی‌ها
-npx tsc --noEmit
-npx expo-doctor
-
-# ساخت APK محلی (پوشه‌ی android به‌صورت خودکار تولید می‌شود؛ دستی ویرایشش نکن)
-npx expo prebuild --platform android
-cd android && ./gradlew assembleRelease
-```
-
-### بک‌اند (Supabase)
-
-فایل‌های SQL را به ترتیب در SQL Editor پروژه اجرا کن (همه قابل اجرای دوباره هستند):
-
-1. `supabase/schema.sql`
-2. `supabase/schema_v2.sql`
-3. `supabase/schema_v3.sql`
-4. `supabase/schema_v4.sql`
-
-آدرس و کلید عمومی پروژه در `src/net/publicConfig.ts` است و با `EXPO_PUBLIC_SUPABASE_URL` و `EXPO_PUBLIC_SUPABASE_ANON_KEY` قابل تغییر است. تابع لبه‌ی `supabase/functions/livekit-token` توکن چت صوتی را صادر می‌کند.
-
-### ساختار پروژه
-
-```
-App.tsx              ناوبری اصلی، تب‌ها و اینترو
-src/game/            موتور فیزیک، رندر Skia، داده‌ی تیم‌ها و زمین‌ها
-src/screens/         خانه، بازی، تیم، فروشگاه، پروفایل، ثبت‌نام
-src/online/          لابی، مسابقه‌ی آنلاین، آرنا، جام جهانی، تورنمنت، رتبه‌ها
-src/social/          چت، باشگاه، پروفایل عمومی
-src/net/             Supabase، احراز هویت، دیسک‌ها، صدا
-supabase/            اسکیمای پایگاه‌داده و تابع لبه
-assets/g/            تصاویر تیم‌ها، زمین‌ها، توپ‌ها، پس‌زمینه‌ها و صداها
-```
 
 ---
 
@@ -210,6 +145,10 @@ assets/g/            تصاویر تیم‌ها، زمین‌ها، توپ‌ه�
 
 <p align="center">
   ساخته‌شده با ❤️ برای عاشقان فوتبال
+</p>
+
+<p align="center">
+  <b>تقدیم به همه دوست‌داران گل کوچیک و رفقای خودم</b>
 </p>
 
 </div>
