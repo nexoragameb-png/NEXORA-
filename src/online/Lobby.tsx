@@ -6,7 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FIELD_THUMB, UI2 } from '../game/assets';
 import { FIELDS } from '../game/data';
-import { Btn, Img, Panel, Press, Segment, T } from '../ui/kit';
+import { Btn, Img, Panel, Press, Segment, T, Toggle } from '../ui/kit';
 import { Sheet, SheetHandle } from '../ui/Chrome';
 import { C, F, G, fa } from '../ui/theme';
 import { buzz, sfx } from '../sound';
@@ -15,6 +15,8 @@ import { RoomLink, useLink } from './link';
 import { Avatar, Badge, ChatPanel, Field, Header, S, Spinner, StatBars, TS, VoiceBar, useVoice } from './ui';
 import { discStats } from '../net/discs';
 import { ruleLabel } from './OnlineMatch';
+import { money, tierById } from './Duels';
+import { useAuth } from '../net/auth';
 
 type Props = { link: RoomLink; onLeave: () => void; onWatch: () => void; toast: (m: string, k?: string) => void };
 
@@ -25,7 +27,7 @@ export default function Lobby(props: Props) {
 }
 
 function LobbyBody({ link, onLeave, onWatch, toast }: Props) {
-  const ins = useSafeAreaInsets();
+  const ins = useSafeAreaInsets(); const { profile } = useAuth();
   const st = useLink(link); const v = useVoice(link);
   const room = st.room!; const me = link.me;
   const [busy, setBusy] = useState<string | null>(null);
@@ -62,8 +64,15 @@ function LobbyBody({ link, onLeave, onWatch, toast }: Props) {
   const copy = async () => { try { await Clipboard.setStringAsync(room.code); toast('کد اتاق کپی شد', 'ok'); buzz('light'); } catch { toast('کپی ناموفق بود', 'err'); } };
   const share = () => { Share.share({ message: `بیا NEXORA بازی کنیم! 🚀\nکد اتاق: ${room.code}` }).catch(() => {}); };
 
-  // quick / arena rooms: as soon as every seat is filled (players are auto-ready) the host starts after 3-2-1
-  const auto = (room.kind === 'quick' || room.kind === 'arena') && room.status === 'waiting' && full && notReady.length === 0;
+  // matchmade rooms (quick / arena / duel): the server starts the first match the moment the room fills.
+  // For rematches every seated player re-confirms; then any of them triggers the start after 3-2-1.
+  const matchmade = room.kind === 'quick' || room.kind === 'arena' || room.kind === 'duel';
+  const allReady = st.players.filter(p => p.role === 'player').every(p => p.ready);
+  const auto = matchmade && room.status === 'waiting' && full && allReady;
+  const tier = room.kind === 'duel' ? tierById(room.tier || (room.settings as any)?.tier) : null;
+  const [since] = useState(Date.now()); const [, setTick] = useState(0);
+  useEffect(() => { if (!matchmade || full) return; const id = setInterval(() => setTick(t => t + 1), 1000); return () => clearInterval(id); }, [matchmade, full]);
+  const waited = Math.floor((Date.now() - since) / 1000);
   const [count, setCount] = useState(0);
   const startRef = useRef(start); startRef.current = start;
   useEffect(() => {
@@ -71,10 +80,10 @@ function LobbyBody({ link, onLeave, onWatch, toast }: Props) {
     let n = 3; setCount(n); sfx('tick'); buzz('light');
     const id = setInterval(() => {
       n--; if (n > 0) { setCount(n); sfx('tick'); buzz('light'); return; }
-      clearInterval(id); setCount(0); if (isHost) startRef.current();
+      clearInterval(id); setCount(0); if (amPlayer) rpc('start_match', { p_room: room.id }).then(() => link.ping(), () => link.refresh());
     }, 1000);
     return () => clearInterval(id);
-  }, [auto, isHost]);
+  }, [auto, amPlayer]);
 
   const reason = !full ? 'منتظر پر شدن جایگاه‌ها…' : notReady.length ? `منتظر آماده شدن ${fa(notReady.length)} بازیکن…` : '';
   const playing = room.status === 'playing';
@@ -104,8 +113,29 @@ function LobbyBody({ link, onLeave, onWatch, toast }: Props) {
           </View>
         </Panel>
 
+        {tier ? (
+          <Panel style={{ padding: S.m, marginTop: S.m }} accent={C.gold} glow>
+            <T s={tier.name} style={{ fontFamily: F.title, fontSize: 18, color: C.gold, textAlign: 'center' }} />
+            <T s={`${tier.rule_fa} · ورودی ${money(tier, tier.entry)} · جایزه‌ی برنده ${money(tier, tier.prize)}`} style={{ fontSize: TS.cap, color: C.dim, textAlign: 'center', marginTop: 2 }} />
+            <T s={`موجودی تو: ${money(tier, tier.currency === 'gems' ? profile?.gems ?? 0 : profile?.coins ?? 0)} · ورودی هنگام شروع کم می‌شود و در صورت لغو برمی‌گردد`} style={{ fontSize: TS.tiny, color: C.dim2, textAlign: 'center', marginTop: 4 }} />
+          </Panel>
+        ) : null}
+        {room.kind === 'social' ? (
+          <Panel style={{ padding: S.m, marginTop: S.m }} accent={C.pink}>
+            <T s={`حاضرین (${fa(st.players.length)})`} style={{ fontFamily: F.bold, fontSize: TS.small, textAlign: 'right', marginBottom: S.s }} />
+            <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap' }}>
+              {st.players.map(p => (
+                <View key={p.user_id} style={{ alignItems: 'center', width: '25%', marginBottom: S.s }}>
+                  <Avatar avatar={p.profiles?.equipped_disc || p.profiles?.avatar} url={p.profiles?.avatar_url} size={52} ring={speaking.has(p.user_id) ? C.green : p.user_id === room.host ? C.gold : C.line} dim={!st.online[p.user_id]} />
+                  <T s={(p.user_id === room.host ? '👑 ' : '') + (p.profiles?.username || '…')} n={1} style={{ fontSize: TS.tiny, marginTop: 2, maxWidth: 76 }} />
+                  {isHost && p.user_id !== me ? <Press onPress={() => kick(p.user_id)} style={{ height: 28, justifyContent: 'center' }}><T s="اخراج" style={{ fontSize: TS.tiny, color: C.red }} /></Press> : null}
+                </View>
+              ))}
+            </View>
+          </Panel>
+        ) : null}
         {/* teams */}
-        <View style={{ flexDirection: 'row-reverse', marginTop: S.m }}>
+        {room.kind !== 'social' ? <View style={{ flexDirection: 'row-reverse', marginTop: S.m }}>
           {[0, 1].map(t => (
             <View key={t} style={{ flex: 1, marginLeft: t === 0 ? S.s : 0 }}>
               <View style={[s.teamHead, { borderColor: (t === 0 ? C.cyan : C.red) + '66' }]}>
@@ -114,16 +144,17 @@ function LobbyBody({ link, onLeave, onWatch, toast }: Props) {
               </View>
               {seats[t].map((p, i) => p
                 ? <Seat key={p.user_id} p={p} me={me} host={room.host} online={!!st.online[p.user_id]} talking={speaking.has(p.user_id)} color={t === 0 ? C.cyan : C.red}
-                  canKick={isHost && p.user_id !== me && !playing} onKick={() => kick(p.user_id)} busy={busy === 'kick' + p.user_id} />
+                  canKick={isHost && p.user_id !== me && !playing} onKick={() => kick(p.user_id)} busy={busy === 'kick' + p.user_id}
+                  onCrown={isHost && p.user_id !== me && !playing ? () => run('host' + p.user_id, () => rpc('transfer_host', { p_room: room.id, p_user: p.user_id }), 'میزبانی منتقل شد') : undefined} />
                 : <Press key={i} onPress={() => sit(t as 0 | 1, i)} disabled={playing || !!busy} style={s.empty}>
                   {busy === `seat${t}${i}` ? <Spinner /> : <><T s="+" style={{ fontFamily: F.title, fontSize: 18, color: C.dim }} /><T s="نشستن" style={{ fontSize: TS.cap, color: C.dim, marginRight: S.xs }} /></>}
                 </Press>)}
             </View>
           ))}
-        </View>
+        </View> : null}
 
         {/* spectators */}
-        <Panel style={{ padding: S.m, marginTop: S.m }} accent="transparent">
+        {room.kind !== 'social' ? <Panel style={{ padding: S.m, marginTop: S.m }} accent="transparent">
           <View style={{ flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between' }}>
             <T s={`تماشاگرها (${fa(specs.length)})`} style={{ fontFamily: F.bold, fontSize: TS.small }} />
             {amPlayer && !playing ? <Press onPress={watch} style={s.smallBtn}><T s="فقط تماشا" style={{ fontSize: TS.cap, color: C.sky }} /></Press> : null}
@@ -138,7 +169,7 @@ function LobbyBody({ link, onLeave, onWatch, toast }: Props) {
               ))}
             </ScrollView>
           ) : <T s="کسی تماشا نمی‌کند" style={{ fontSize: TS.cap, color: C.dim2, textAlign: 'right', marginTop: S.xs }} />}
-        </Panel>
+        </Panel> : null}
 
         {/* voice */}
         <Panel style={{ padding: S.m, marginTop: S.m }} accent="transparent">
@@ -158,7 +189,7 @@ function LobbyBody({ link, onLeave, onWatch, toast }: Props) {
           </Panel>
         </Press>
 
-        {isHost && !playing && !room.tournament_match_id ? (
+        {isHost && !playing && !room.tournament_match_id && (room.kind === 'casual' || room.kind === 'social') ? (
           <Btn label="تنظیمات اتاق" small colors={G.dark} onPress={() => setSheet('settings')} style={{ marginTop: S.m }} />
         ) : null}
       </ScrollView>
@@ -168,8 +199,20 @@ function LobbyBody({ link, onLeave, onWatch, toast }: Props) {
         <LinearGradient pointerEvents="none" colors={['transparent', 'rgba(2,4,14,.92)', 'rgba(2,4,14,.98)']} style={StyleSheet.absoluteFill} />
         {playing ? (
           <Btn label="ورود به بازی زنده" onPress={onWatch} colors={G.red} />
-        ) : (room.kind === 'quick' || room.kind === 'arena') ? (
-          <T s={full ? 'آماده‌ی شروع…' : `در جستجوی حریف… (${fa(st.players.filter(p => p.role === 'player').length)}/${fa(n * 2)})`} style={{ fontFamily: F.bold, fontSize: TS.body, color: C.cyan, textAlign: 'center', paddingVertical: S.m }} />
+        ) : room.kind === 'social' ? (
+          <T s="اتاق گفتگو · با چت متنی و صوتی با هم حرف بزنید" style={{ fontSize: TS.small, color: C.dim, textAlign: 'center', paddingVertical: S.m }} />
+        ) : matchmade ? (
+          full && amPlayer && !meP?.ready ? (
+            <Btn label={tier ? `بازی دوباره · ورودی ${money(tier, tier.entry)}` : 'بازی دوباره'} onPress={ready} disabled={!!busy} colors={G.green} />
+          ) : full ? (
+            <T s={allReady ? 'آماده‌ی شروع…' : `منتظر تأیید ${fa(st.players.filter(p => p.role === 'player' && !p.ready).length)} بازیکن…`} style={{ fontFamily: F.bold, fontSize: TS.body, color: C.cyan, textAlign: 'center', paddingVertical: S.m }} />
+          ) : (
+            <View style={{ alignItems: 'center' }}>
+              <T s={`در جستجوی حریف ${room.mode}… (${fa(st.players.filter(p => p.role === 'player').length)}/${fa(n * 2)}) · ${fa(Math.floor(waited / 60))}:${String(waited % 60).padStart(2, '0').replace(/\d/g, d => '۰۱۲۳۴۵۶۷۸۹'[+d])}`} style={{ fontFamily: F.bold, fontSize: TS.body, color: C.cyan, textAlign: 'center' }} />
+              {waited > 60 ? <T s="کسی پیدا نشد؟ می‌توانی صبر کنی یا حالت دیگری را امتحان کنی" style={{ fontSize: TS.cap, color: C.dim, marginTop: 4, textAlign: 'center' }} /> : null}
+              <Btn label="لغو جستجو" small colors={G.dark} onPress={onLeave} style={{ marginTop: S.s, width: 160 }} />
+            </View>
+          )
         ) : isHost ? (
           <>
             {reason ? <T s={reason} style={{ fontSize: TS.cap, color: C.dim, textAlign: 'center', marginBottom: S.s }} /> : null}
@@ -198,7 +241,7 @@ function LobbyBody({ link, onLeave, onWatch, toast }: Props) {
   );
 }
 
-const Seat = memo(function Seat({ p, me, host, online, talking, color, canKick, onKick, busy }: { p: RoomPlayer; me: string; host: string; online: boolean; talking: boolean; color: string; canKick: boolean; onKick: () => void; busy: boolean }) {
+const Seat = memo(function Seat({ p, me, host, online, talking, color, canKick, onKick, busy, onCrown }: { p: RoomPlayer; me: string; host: string; online: boolean; talking: boolean; color: string; canKick: boolean; onKick: () => void; busy: boolean; onCrown?: () => void }) {
   const isHost = p.user_id === host;
   return (
     <View style={[s.seat, { borderColor: talking ? C.green : p.user_id === me ? color : C.line }]}>
@@ -211,6 +254,7 @@ const Seat = memo(function Seat({ p, me, host, online, talking, color, canKick, 
         <T s={isHost ? 'میزبان' : p.ready ? 'آماده ✓' : 'آماده نیست'} n={1} style={{ fontSize: TS.tiny, color: isHost ? C.gold : p.ready ? C.green : C.dim2 }} />
         <StatBars {...discStats(p.disc_id || p.profiles?.equipped_disc)} compact />
       </View>
+      {onCrown ? <Press onPress={onCrown} style={[s.kick, { width: 30 }]}><T s="👑" style={{ fontSize: 12 }} /></Press> : null}
       {canKick ? <Press onPress={onKick} style={s.kick} disabled={busy}><T s="✕" style={{ fontSize: 12, color: C.red }} /></Press> : null}
     </View>
   );
@@ -240,9 +284,11 @@ function RoomSettings({ link, toast, onDone }: { link: RoomLink; toast: (m: stri
   const [turn, setTurn] = useState<number>(room.settings?.turn ?? 15);
   const [field, setField] = useState<number>(room.settings?.field ?? 0);
   const [busy, setBusy] = useState(false);
+  const [priv, setPriv] = useState(room.is_private); const [voice, setVoice] = useState(room.voice);
   const save = async () => {
     setBusy(true);
     try {
+      if (priv !== room.is_private || voice !== room.voice) await rpc('update_room_meta', { p_room: room.id, p_private: priv, p_voice: voice });
       await rpc('update_room', { p_room: room.id, p_settings: { ...room.settings, ...ruleToSettings(rule), turn, field }, p_name: name.trim().slice(0, 40) });
       link.ping(); await link.refresh(); toast('تنظیمات ذخیره شد', 'ok'); onDone();
     } catch (e) { toast(errFa(e), 'err'); } finally { setBusy(false); }
@@ -256,6 +302,10 @@ function RoomSettings({ link, toast, onDone }: { link: RoomLink; toast: (m: stri
       <Segment value={turn} onChange={setTurn} items={[[10, '۱۰ث'], [15, '۱۵ث'], [20, '۲۰ث'], [0, 'بدون']]} accent={C.green} />
       <T s="زمین" style={s.lbl} />
       <FieldPicker value={field} onChange={setField} />
+      {room.kind === 'casual' || room.kind === 'social' ? (<>
+        <View style={{ flexDirection: 'row-reverse', alignItems: 'center', marginTop: S.l }}><T s="اتاق خصوصی (فقط با کد)" style={{ flex: 1, textAlign: 'right', fontFamily: F.bold, fontSize: TS.small }} /><Toggle on={priv} onChange={setPriv} /></View>
+        <View style={{ flexDirection: 'row-reverse', alignItems: 'center', marginTop: S.m }}><T s="چت صوتی" style={{ flex: 1, textAlign: 'right', fontFamily: F.bold, fontSize: TS.small }} /><Toggle on={voice} onChange={setVoice} /></View>
+      </>) : null}
       <Btn label={busy ? 'در حال ذخیره…' : 'ذخیره'} onPress={save} disabled={busy} style={{ marginTop: S.l }} />
     </ScrollView>
   );

@@ -29,10 +29,12 @@ import { Room, RoomPlayer, rpc, supabase } from '../net/supabase';
 import { RoomLink, useLink } from './link';
 import { Badge, ChatPanel, S, VoiceBar, teamOfAvatar } from './ui';
 import { discStats } from '../net/discs';
+import { money, tierById } from './Duels';
 
 export type OnlineOutcome = {
   matchId: string; score: [number, number]; winner: -1 | 0 | 1; ratingDelta: number | null; myTeam: 0 | 1 | null;
   teams: [Team, Team]; names: [string, string]; reported: boolean; ranked: boolean;
+  duel?: { name: string; text: string; good: boolean } | null;
 };
 
 type Snap = { q: number; ts: number; hz: number; ph: Phase; tu: 0 | 1; sc: [number, number]; ml: number; tl: number; su: 0 | 1; c: string | null; n: number; p: number[]; R: number[]; ev: number[][] };
@@ -116,7 +118,10 @@ export default function OnlineMatch({ link, matchId, onFinish, onExit, toast, fx
   const outcome = (score: [number, number], d: number | null, reported: boolean): OnlineOutcome => {
     const w: -1 | 0 | 1 = score[0] > score[1] ? 0 : score[1] > score[0] ? 1 : -1;
     const my = start.myTeam, rd = d === null ? null : !start.ranked ? 0 : my === 1 ? -d : my === 0 ? d : null;
-    return { matchId, score, winner: w, ratingDelta: rd, myTeam: my, teams: start.teams, names: start.names, reported, ranked: start.ranked };
+    const tier = room0.kind === 'duel' ? tierById(room0.tier || (room0.settings as any)?.tier) : null;
+    const duel = tier && my !== null ? (w === -1 ? { name: tier.name, text: `تساوی · ${money(tier, tier.entry)} برگشت داده شد`, good: true }
+      : w === my ? { name: tier.name, text: `+${money(tier, tier.prize)} جایزه‌ی برنده`, good: true } : { name: tier.name, text: `ورودی ${money(tier, tier.entry)} از دست رفت`, good: false }) : null;
+    return { matchId, score, winner: w, ratingDelta: rd, myTeam: my, teams: start.teams, names: start.names, reported, ranked: start.ranked, duel };
   };
 
   // local feedback for an engine event (host: straight from the engine; others: from snapshots)
@@ -283,7 +288,7 @@ export default function OnlineMatch({ link, matchId, onFinish, onExit, toast, fx
       // the player in control flicks with their own equipped disc's stats
       { const cu = isHost ? hs.ctrl : cs.ctrl; if (cu && cfg.stats) { const pl = playersRef.current.find(x => x.user_id === cu); if (pl) cfg.stats[eng.turn] = discStats(discOf(pl)); } }
       if (!fx && eng.parts.length > 40) eng.parts.length = 40;
-      picSet.current(frame(eng, viewRef.current, imRef.current, bgRef.current, cfg.ball, (now - t0) / 1000));
+      picSet.current(frame(eng, viewRef.current, imRef.current, bgRef.current, cfg.ball, (now - t0) / 1000, fx));
       // HUD (setState only on change)
       const ctrl = isHost ? hs.ctrl : cs.ctrl;
       const m = Math.max(0, Math.ceil(eng.mleft));

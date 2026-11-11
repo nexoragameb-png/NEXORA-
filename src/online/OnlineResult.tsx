@@ -57,6 +57,12 @@ export default function OnlineResult({ o, before, onLobby, onLeave }: { o: Onlin
         <Side img={TEAM_IMG[teamKey(o.teams[1])]} name={o.names[1]} c={C.red} />
       </Panel>
 
+      {o.duel && o.reported ? (
+        <Panel style={{ alignSelf: 'stretch', padding: S.m, marginTop: S.m }} accent={o.duel.good ? C.gold : C.red} glow>
+          <T s={o.duel.name} style={{ fontFamily: F.title, fontSize: 16, color: C.gold, textAlign: 'center' }} />
+          <T s={o.duel.text} style={{ fontFamily: F.bold, fontSize: TS.body, color: o.duel.good ? C.green : C.red, textAlign: 'center', marginTop: 4 }} />
+        </Panel>
+      ) : null}
       {mine === null ? (
         <T s="تو تماشاگر این بازی بودی" style={{ color: C.dim, fontSize: TS.small, marginTop: S.m }} />
       ) : !o.reported ? (
@@ -70,6 +76,7 @@ export default function OnlineResult({ o, before, onLobby, onLeave }: { o: Onlin
           <View style={{ flexDirection: 'row-reverse', marginTop: S.m, alignSelf: 'stretch' }}>
             <Rw img={UI2.x_star} v={dXp ?? 0} c={C.cyan} d={150} label="XP" />
             <Rw img={UI2.c_coin} v={dCoins ?? 0} c={C.gold} d={300} />
+            {after && before && after.gems !== before.gems ? <Rw img={UI2.x_gem} v={after.gems - before.gems} c="#9fd8ff" d={380} label="الماس" /> : null}
             <Rw img={UI2.x_trophy} v={dRating ?? 0} c={(dRating ?? 0) >= 0 ? C.green : C.red} d={450} label="امتیاز" />
             {dArena ? <Rw img={UI2.x_crown} v={dArena} c={C.violet} d={600} label="آرنا" /> : null}
           </View>

@@ -11,7 +11,7 @@ import { useAuth } from '../net/auth';
 import { Entry, Format, Mode, Room, TMatch, Tournament, errFa, rpc, supabase } from '../net/supabase';
 import { Badge, Card, Empty, ErrorState, Field, Header, S, Skeleton, Spinner, TS, Tabs } from './ui';
 
-export const FORMAT_FA: Record<Format, string> = { single_elim: 'حذفی تک', double_elim: 'حذفی دوگانه', round_robin: 'دوره‌ای', swiss: 'سوئیسی', league: 'لیگ' };
+export const FORMAT_FA: Record<Format, string> = { single_elim: 'حذفی تک', double_elim: 'حذفی دوگانه', round_robin: 'دوره‌ای', swiss: 'سوئیسی', league: 'لیگ', world_cup: 'جام جهانی' };
 const STATUS_FA: Record<Tournament['status'], [string, string]> = { registration: ['ثبت‌نام', C.green], running: ['در جریان', C.orange], finished: ['پایان‌یافته', C.dim] };
 const isElim = (f: Format) => f === 'single_elim' || f === 'double_elim';
 
@@ -107,7 +107,7 @@ function CreateTournament({ toast, onDone }: { toast: (m: string, k?: string) =>
       <Field label="نام تورنمنت" value={name} onChangeText={setName} maxLength={40} placeholder="جام کهکشان" />
       <T s="فرمت" style={st.lbl} />
       <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: S.s }}>
-        {(Object.keys(FORMAT_FA) as Format[]).map(f => (
+        {(Object.keys(FORMAT_FA) as Format[]).filter(f => f !== 'world_cup').map(f => (
           <Press key={f} onPress={() => setFormat(f)} style={[st.chip, f === format && st.chipOn]}><T s={FORMAT_FA[f]} style={{ fontFamily: F.bold, fontSize: TS.small, color: f === format ? '#fff' : C.dim }} /></Press>
         ))}
       </View>
@@ -187,8 +187,7 @@ export function TournamentDetail({ id, onBack, onRoom, toast }: DetailProps) {
           <Panel style={{ padding: S.m }} accent={sc}>
             <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', rowGap: 4 }}>
               <Badge label={sl} color={sc} live={t.status === 'running'} /><Badge label={`${fa(entries.length)}/${fa(t.max_entries)} شرکت‌کننده`} color={C.sky} />
-              <Badge label={`💎 ${fa(t.prize_gems ?? 0)} قهرمان`} color="#9fd8ff" /><Badge label={`${fa(t.prize_xp)} XP`} color={C.cyan} />
-              {t.min_level > 1 ? <Badge label={`حداقل سطح ${fa(t.min_level)}`} color={C.green} /> : null}
+              <Badge label={`💎 ${fa(t.prize_gems ?? 0)} قهرمان`} color="#9fd8ff" />              {t.min_level > 1 ? <Badge label={`حداقل سطح ${fa(t.min_level)}`} color={C.green} /> : null}
               {t.status !== 'registration' && t.current_round ? <Badge label={`دور ${fa(t.current_round)}`} color={C.violet} /> : null}
             </View>
             {winner ? (
@@ -253,7 +252,7 @@ export const roundLabel = (round: number, total: number) => {
 };
 const BOX_W = 168, BOX_H = 64, GAP = 14, COL_GAP = 28;
 
-function Bracket({ matches, names, format, myEntry, canOverride, onOverride }: { matches: TMatch[]; names: Record<string, string>; format: Format; myEntry?: string; canOverride: boolean; onOverride: (m: TMatch) => void }) {
+export function Bracket({ matches, names, format, myEntry, canOverride, onOverride }: { matches: TMatch[]; names: Record<string, string>; format: Format; myEntry?: string; canOverride: boolean; onOverride: (m: TMatch) => void }) {
   const sections: [string, TMatch[]][] = format === 'double_elim'
     ? [['جدول برندگان', matches.filter(m => m.bracket === 'winners')], ['جدول بازندگان', matches.filter(m => m.bracket === 'losers')], ['فینال بزرگ', matches.filter(m => m.bracket === 'final')]]
     : [['', matches.filter(m => m.bracket === 'main')]];

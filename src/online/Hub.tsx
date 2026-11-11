@@ -15,12 +15,12 @@ import { FieldPicker, ruleToSettings } from './Lobby';
 import { ruleLabel } from './OnlineMatch';
 import { Bar } from '../ui/kit';
 
-export type HubNav = 'tours' | 'ranks' | 'arena' | 'challenges';
+export type HubNav = 'tours' | 'ranks' | 'arena' | 'challenges' | 'duels' | 'worldcup' | 'social';
 type Props = { onBack: () => void; onRoom: (r: Room) => void; onNav: (n: HubNav) => void; toast: (m: string, k?: string) => void };
 
 const MODES: Mode[] = ['1v1', '2v2', '3v3'];
 const MODE_FA: Record<Mode, string> = { '1v1': 'تک به تک', '2v2': '۲ به ۲', '3v3': '۳ به ۳' };
-export const KIND_FA: Record<string, [string, string]> = { casual: ['دوستانه', C.green], quick: ['سریع', C.cyan], arena: ['آرنا', C.violet], tournament: ['تورنمنت', C.orange] };
+export const KIND_FA: Record<string, [string, string]> = { casual: ['دوستانه', C.green], quick: ['سریع', C.cyan], arena: ['آرنا', C.violet], tournament: ['تورنمنت', C.orange], duel: ['دوئل', C.gold], social: ['گفتگو', C.pink] };
 
 export default function Hub({ onBack, onRoom, onNav, toast }: Props) {
   const ins = useSafeAreaInsets();
@@ -112,9 +112,10 @@ export default function Hub({ onBack, onRoom, onNav, toast }: Props) {
       </Enter>
 
       {/* shortcuts */}
-      <View style={{ flexDirection: 'row-reverse', paddingHorizontal: S.l, marginTop: S.m }}>
-        {([['arena', 'آرنا', UI2.x_crown, C.violet], ['tours', 'تورنمنت', UI2.x_trophy, C.orange], ['ranks', 'رده‌بندی', UI2.x_medal, C.gold], ['challenges', 'چالش‌ها', UI2.c_calendar, C.green]] as const).map(([k, l, img, c], i) => (
-          <Press key={k} onPress={() => onNav(k)} style={[s.tile, { borderColor: c + '66', marginLeft: i < 3 ? S.s : 0 }]}>
+      <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: S.s, paddingHorizontal: S.l, marginTop: S.m }}>
+        {([['duels', 'دوئل آرنا', UI2.x_gem, C.gold], ['worldcup', 'جام جهانی', UI2.x_trophy, C.gold], ['arena', 'نردبان آرنا', UI2.x_crown, C.violet], ['tours', 'تورنمنت', UI2.x_medal, C.orange],
+          ['ranks', 'رده‌بندی', UI2.x_shield, C.sky], ['challenges', 'چالش‌ها', UI2.c_calendar, C.green], ['social', 'پیام و باشگاه', UI2.c_profile, C.pink], ['social', '', null, 'transparent']] as const).map(([k, l, img, c], i) => !img ? <View key={'x' + i} style={{ width: '23.5%' }} /> : (
+          <Press key={k + i} onPress={() => onNav(k)} style={[s.tile, { borderColor: c + '66', width: '23.5%', flex: undefined }]}>
             <LinearGradient colors={[c + '33', 'rgba(8,12,34,.9)']} style={StyleSheet.absoluteFill} />
             <Img src={img} style={{ width: 36, height: 36 }} />
             <T s={l} n={1} style={{ fontFamily: F.bold, fontSize: TS.cap, marginTop: 2 }} />
@@ -206,6 +207,7 @@ function CreateRoom({ onCreate, busy }: { onCreate: (a: any) => void; busy: bool
   const [rule, setRule] = useState('g3');
   const [turn, setTurn] = useState(15);
   const [field, setField] = useState(6);
+  const [talk, setTalk] = useState(false);
   const row = (label: string, sub: string, v: boolean, set: (b: boolean) => void) => (
     <View style={s.optRow}>
       <View style={{ flex: 1, alignItems: 'flex-end', marginLeft: S.m }}>
@@ -227,12 +229,13 @@ function CreateRoom({ onCreate, busy }: { onCreate: (a: any) => void; busy: bool
       <T s="زمین" style={s.lbl} />
       <FieldPicker value={field} onChange={setField} />
       <View style={{ marginTop: S.m }}>
+        {row('اتاق گفتگو', 'فقط چت متنی و صوتی، بدون مسابقه', talk, setTalk)}
         {row('خصوصی', 'فقط با کد اتاق می‌شود وارد شد', priv, setPriv)}
         {row('رتبه‌ای', 'نتیجه روی امتیاز و لیگ اثر دارد', ranked, setRanked)}
         {row('چت صوتی', 'بازیکن‌ها می‌توانند صحبت کنند', voice, setVoice)}
       </View>
       <Btn label={busy ? 'در حال ساخت…' : 'ساخت اتاق'} disabled={busy} colors={G.green} style={{ marginTop: S.l }}
-        onPress={() => onCreate({ p_mode: mode, p_name: name.trim() || null, p_private: priv, p_ranked: ranked, p_voice: voice, p_settings: { ...ruleToSettings(rule), field, turn, ball: 0 } })} />
+        onPress={() => onCreate({ p_mode: mode, p_name: name.trim() || null, p_private: priv, p_ranked: ranked, p_voice: voice, p_settings: { ...ruleToSettings(rule), field, turn, ball: 0 }, p_kind: talk ? 'social' : 'casual' })} />
     </ScrollView>
   );
 }

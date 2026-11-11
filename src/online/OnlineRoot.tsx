@@ -20,15 +20,27 @@ import Tournaments, { TournamentDetail } from './Tournaments';
 import Ranks from './Ranks';
 import Arena from './Arena';
 import Challenges from './Challenges';
+import Duels from './Duels';
+import WorldCup from './WorldCup';
+import Social from '../social/Social';
+import Chat from '../social/Chat';
+import Club from '../social/Club';
+import UserProfile from '../social/UserProfile';
+import { NavCtx, useNav } from '../nav';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Header } from './ui';
 
 type R = { k: 'hub' } | { k: 'lobby' } | { k: 'match'; id: string } | { k: 'result'; o: OnlineOutcome; before: OnlineProfile | null }
-  | { k: 'tours' } | { k: 'tour'; id: string } | { k: 'ranks'; tab?: 'top' | 'leagues' } | { k: 'arena' } | { k: 'challenges' };
+  | { k: 'tours' } | { k: 'tour'; id: string } | { k: 'ranks'; tab?: 'top' | 'leagues' } | { k: 'arena' } | { k: 'challenges' }
+  | { k: 'duels' } | { k: 'worldcup' } | { k: 'social' } | { k: 'chat'; id: string } | { k: 'club'; id: string } | { k: 'user'; id: string };
+const entryRoute = (e: OnlineEntry): R => (typeof e === 'object' ? (e as R) : e === 'leagues' ? { k: 'ranks', tab: 'leagues' } : ({ k: e } as R));
 
 type Props = { entry: OnlineEntry; onExit: () => void; toast: (m: string, k?: string) => void; fx: boolean };
 
 export default function OnlineRoot({ entry, onExit, toast, fx }: Props) {
   const auth = useAuth();
-  const [stack, setStack] = useState<R[]>([entry === 'leagues' ? { k: 'ranks', tab: 'leagues' } : ({ k: entry } as R)]);
+  const [stack, setStack] = useState<R[]>(() => [entryRoute(entry)]);
+  const appNav = useNav(); const ins = useSafeAreaInsets();
   const [link, setLink] = useState<RoomLink | null>(null);
   const [ls, setLs] = useState<LinkState | null>(null);
   const [connErr, setConnErr] = useState<string | null>(null);
@@ -118,8 +130,16 @@ export default function OnlineRoot({ entry, onExit, toast, fx }: Props) {
     );
   }
 
-  const key = top.k + (top.k === 'tour' || top.k === 'match' ? (top as any).id : '');
+  const key = top.k + ('id' in top ? (top as any).id : '');
+  const nav = {
+    ...appNav, toast,
+    openOnline: (e?: OnlineEntry) => push(entryRoute(e || 'hub')),
+    openProfile: (id: string) => push({ k: 'user', id }),
+    openChat: (id: string) => push({ k: 'chat', id }),
+    openClub: (id: string) => push({ k: 'club', id }),
+  };
   return (
+    <NavCtx.Provider value={nav}>
     <View style={{ flex: 1, backgroundColor: C.bg }}>
       {top.k !== 'match' ? <Space theme={top.k === 'result' ? (top.o.myTeam !== null && top.o.winner === top.o.myTeam ? 'win' : top.o.winner === -1 || top.o.myTeam === null ? 'system' : 'lose') : 'base'} dim={.1} stars={fx} /> : null}
       <Animated.View key={key} entering={FadeIn.duration(220)} exiting={FadeOut.duration(120)} style={{ flex: 1 }}>
@@ -135,6 +155,16 @@ export default function OnlineRoot({ entry, onExit, toast, fx }: Props) {
                   : top.k === 'ranks' ? <Ranks onBack={back} toast={toast} tab={top.tab} />
                     : top.k === 'arena' ? <Arena onBack={back} toast={toast} onRoom={enterRoom} />
                       : top.k === 'challenges' ? <Challenges onBack={back} toast={toast} />
+                      : top.k === 'duels' ? <Duels onBack={back} toast={toast} onRoom={enterRoom} />
+                      : top.k === 'worldcup' ? <WorldCup onBack={back} toast={toast} onRoom={enterRoom} />
+                      : top.k === 'social' ? (
+                        <View style={{ flex: 1 }}>
+                          <Header title="اجتماعی" en="SOCIAL · CHAT · CLUBS" onBack={back} />
+                          <Social top={ins.top + 76} bottom={ins.bottom + S.l} toast={toast} />
+                        </View>)
+                      : top.k === 'chat' ? <Chat id={top.id} onBack={back} toast={toast} />
+                      : top.k === 'club' ? <Club id={top.id} onBack={back} toast={toast} onRoom={enterRoom} />
+                      : top.k === 'user' ? <UserProfile id={top.id} onBack={back} toast={toast} />
                         : <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><Spinner /></View>}
       </Animated.View>
       {confirmLeave ? (
@@ -149,5 +179,6 @@ export default function OnlineRoot({ entry, onExit, toast, fx }: Props) {
         </Modal>
       ) : null}
     </View>
+    </NavCtx.Provider>
   );
 }

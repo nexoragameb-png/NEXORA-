@@ -29,6 +29,11 @@ if (Platform.OS !== 'web') {
 // ---------- errors ----------
 const MAP: [RegExp, string][] = [
   [/not enough gems/i, 'الماس کافی نداری'],
+  [/not enough coins/i, 'سکه‌ی آنلاین کافی نداری'],
+  [/bad tier/i, 'این آرنا وجود ندارد'],
+  [/pack not found/i, 'این بسته پیدا نشد'],
+  [/not in room/i, 'این بازیکن در اتاق نیست'],
+  [/bad kind|bad mode|bad format/i, 'درخواست نامعتبر'],
   [/already owned/i, 'این دیسک را قبلاً داری'],
   [/not owned/i, 'این دیسک را نداری'],
   [/already in club/i, 'تو الان عضو یک باشگاه هستی'],
@@ -97,17 +102,17 @@ export async function rpc<T = any>(fn: string, args?: Record<string, unknown>): 
 
 // ---------- shared row types ----------
 export type Mode = '1v1' | '2v2' | '3v3';
-export type Kind = 'casual' | 'quick' | 'arena' | 'tournament';
+export type Kind = 'casual' | 'quick' | 'arena' | 'tournament' | 'duel' | 'social';
 export type RoomSettings = { goals: number; time: number; field: number; ball?: number; turn?: number };
 export type Room = {
   id: string; code: string; name: string; host: string; mode: Mode; status: 'waiting' | 'playing' | 'finished';
-  is_private: boolean; ranked: boolean; voice: boolean; settings: RoomSettings; tournament_match_id: string | null; current_match: string | null; kind: Kind;
+  is_private: boolean; ranked: boolean; voice: boolean; settings: RoomSettings; tournament_match_id: string | null; current_match: string | null; kind: Kind; tier?: string | null;
   created_at: string; updated_at: string;
 };
 export type MiniProfile = { username: string; avatar: string; avatar_url: string | null; level: number; rating: number; league: string; equipped_disc: string };
 export type RoomPlayer = { room_id: string; user_id: string; role: 'player' | 'spectator'; team: 0 | 1 | null; slot: number | null; ready: boolean; joined_at: string; disc_id: string | null; profiles: MiniProfile | null };
 export type RoomListRow = {
-  id: string; code: string; name: string; mode: Mode; kind: Kind; host_avatar_url: string | null; status: Room['status']; is_private: boolean; ranked: boolean; voice: boolean; settings: RoomSettings;
+  id: string; code: string; name: string; mode: Mode; kind: Kind; tier?: string | null; host_avatar_url: string | null; status: Room['status']; is_private: boolean; ranked: boolean; voice: boolean; settings: RoomSettings;
   created_at: string; host: string; host_name: string; host_avatar: string; host_level: number; host_league: string; players: number; spectators: number; capacity: number;
 };
 export type OnlineProfile = {
@@ -117,19 +122,20 @@ export type OnlineProfile = {
 };
 export type Disc = { id: string; cat: string; name: string; price_gems: number; power: number; accuracy: number };
 export type League = { id: string; name_fa: string; min_rating: number; color: string; sort: number };
-export type Format = 'single_elim' | 'double_elim' | 'round_robin' | 'swiss' | 'league';
+export type Format = 'single_elim' | 'double_elim' | 'round_robin' | 'swiss' | 'league' | 'world_cup';
 export type Tournament = {
   id: string; name: string; format: Format; mode: Mode; max_entries: number; rounds: number | null; status: 'registration' | 'running' | 'finished';
-  created_by: string | null; prize_xp: number; prize_coins: number; prize_gems: number; min_level: number; winner_entry: string | null; current_round: number; starts_at: string | null; created_at: string;
+  created_by: string | null; prize_xp: number; prize_coins: number; prize_gems: number; min_level: number; winner_entry: string | null; current_round: number; starts_at: string | null; created_at: string; month?: string | null; stage?: string | null;
 };
 export type Entry = {
   id: string; tournament_id: string; captain: string; team_name: string; members: string[]; seed: number | null; points: number; played: number;
-  wins: number; draws: number; losses: number; gf: number; ga: number; lb_losses: number; eliminated: boolean; final_rank: number | null; pos?: number;
+  wins: number; draws: number; losses: number; gf: number; ga: number; lb_losses: number; eliminated: boolean; final_rank: number | null; pos?: number; group_no?: number | null;
 };
 export type TMatch = {
-  id: string; tournament_id: string; bracket: 'main' | 'winners' | 'losers' | 'final'; round: number; idx: number; entry_a: string | null; entry_b: string | null;
-  score_a: number | null; score_b: number | null; winner_entry: string | null; status: 'pending' | 'ready' | 'live' | 'done' | 'bye'; room_id: string | null;
+  id: string; tournament_id: string; bracket: 'main' | 'winners' | 'losers' | 'final' | 'group'; round: number; idx: number; entry_a: string | null; entry_b: string | null;
+  score_a: number | null; score_b: number | null; winner_entry: string | null; status: 'pending' | 'ready' | 'live' | 'done' | 'bye'; room_id: string | null; group_no?: number | null; deadline?: string | null;
 };
+export type ArenaTier = { id: string; name: string; name_fa: string; currency: 'coins' | 'gems'; entry: number; prize: number; goals: number; time_s: number; sort: number; rule_fa: string };
 
 export const teamSize = (m: Mode) => (m === '1v1' ? 1 : m === '2v2' ? 2 : 3);
 // level formula shared with the backend: level = floor(sqrt(xp/100))+1, xp_for_level(l) = (l-1)^2*100
