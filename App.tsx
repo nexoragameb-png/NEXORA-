@@ -8,7 +8,7 @@ import { Exo2_600SemiBold, Exo2_800ExtraBold } from '@expo-google-fonts/exo-2';
 import { Vazirmatn_500Medium, Vazirmatn_800ExtraBold } from '@expo-google-fonts/vazirmatn';
 import { StoreProvider, level, useStore } from './src/store';
 import { C, F, G, fa } from './src/ui/theme';
-import { Btn, Img, T } from './src/ui/kit';
+import { Btn, Img, T, rowDir, startAlign } from './src/ui/kit';
 import { UI2 } from './src/game/assets';
 import { TEAMS } from './src/game/data';
 import { CHEST_EVERY, ChestPrize, DAILY, grant, rollChest } from './src/game/meta';
@@ -243,7 +243,7 @@ function DailyCard({ ready, streak, lastDaily, onClaim, onClose }: { ready: bool
       <Img src={UI2.c_calendar} style={{ width: 96, height: 96 }} />
       <T s="جایزه‌ی روزانه" style={{ fontFamily: F.title, fontSize: 21, marginTop: 4 }} />
       <T s="هر روز سر بزن، جایزه‌ها بزرگ‌تر می‌شن" style={{ color: C.dim, fontSize: 12, marginTop: 2 }} />
-      <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', justifyContent: 'center', marginTop: 14 }}>
+      <View style={{ flexDirection: rowDir(), flexWrap: 'wrap', justifyContent: 'center', marginTop: 14 }}>
         {DAILY.map((d, i) => {
           const day = i + 1, got = ready ? day < next : day <= next, cur = ready && day === next;
           return (

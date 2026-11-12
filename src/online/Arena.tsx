@@ -4,7 +4,7 @@ import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { UI2 } from '../game/assets';
-import { Btn, Img, Panel, T } from '../ui/kit';
+import { Btn, Img, Panel, T, rowDir, startAlign } from '../ui/kit';
 import { C, F, G, fa } from '../ui/theme';
 import { buzz, sfx } from '../sound';
 import { useAuth } from '../net/auth';
@@ -34,9 +34,9 @@ export default function Arena({ onBack, onRoom, toast }: { onBack: () => void; o
     <View style={{ paddingHorizontal: S.l }}>
       <Panel style={{ padding: S.l }} accent={C.violet} glow>
         <LinearGradient colors={['rgba(163,91,255,.25)', 'transparent']} style={StyleSheet.absoluteFill} />
-        <View style={{ flexDirection: 'row-reverse', alignItems: 'center' }}>
+        <View style={{ flexDirection: rowDir(), alignItems: 'center' }}>
           <Img src={UI2.x_crown} style={{ width: 64, height: 64 }} />
-          <View style={{ flex: 1, marginRight: S.m, alignItems: 'flex-end' }}>
+          <View style={{ flex: 1, marginRight: S.m, alignItems: startAlign() }}>
             <T s="امتیاز آرنا" style={{ fontSize: TS.small, color: C.dim }} />
             <T s={fa(profile?.arena_points ?? 0)} style={{ fontFamily: F.title, fontSize: 32, color: '#e2c8ff' }} />
           </View>
@@ -47,7 +47,7 @@ export default function Arena({ onBack, onRoom, toast }: { onBack: () => void; o
           </View>
         </View>
         <T s="برد: ۳۰+ و ۵+ برای هر برد پیاپی · باخت: ۲۰−" style={{ fontSize: TS.cap, color: C.dim, textAlign: 'right', marginTop: S.s }} />
-        <View style={{ flexDirection: 'row-reverse', marginTop: S.m }}>
+        <View style={{ flexDirection: rowDir(), marginTop: S.m }}>
           {(['1v1', '2v2', '3v3'] as Mode[]).map((m, i) => (
             <Btn key={m} label={busy === m ? '…' : m.toUpperCase()} sub="یافتن حریف" small colors={i === 0 ? G.violet : i === 1 ? G.primary : G.gold} onPress={() => find(m)} disabled={!!busy} style={{ flex: 1, marginLeft: i < 2 ? S.s : 0 }} />
           ))}

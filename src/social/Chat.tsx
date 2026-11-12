@@ -5,7 +5,7 @@ import Animated, { FadeInUp } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { UI2 } from '../game/assets';
-import { Img, Press, T } from '../ui/kit';
+import { Img, Press, T, rowDir, startAlign } from '../ui/kit';
 import { C, F, fa } from '../ui/theme';
 import { buzz, sfx } from '../sound';
 import { useAuth } from '../net/auth';
@@ -117,7 +117,7 @@ const Bubble = memo(function Bubble({ m, mine, group, member, showName, onLong, 
   if (!m.sender) return <View style={st.sys}><T s={m.body || ''} style={{ fontSize: TS.cap, color: C.gold, textAlign: 'center' }} /></View>;
   const time = new Date(m.created_at); const hh = `${fa(time.getHours())}:${String(time.getMinutes()).padStart(2, '0').replace(/\d/g, d => '۰۱۲۳۴۵۶۷۸۹'[+d])}`;
   return (
-    <Animated.View entering={FadeInUp.duration(180)} style={{ flexDirection: mine ? 'row-reverse' : 'row', alignItems: 'flex-end', marginBottom: 6 }}>
+    <Animated.View entering={FadeInUp.duration(180)} style={{ flexDirection: mine ? 'row-reverse' : 'row', alignItems: startAlign(), marginBottom: 6 }}>
       {!mine && group ? (showName ? <Press onPress={onAvatar} sound={false}><Avatar avatar={member?.profiles?.avatar} url={member?.profiles?.avatar_url} size={30} /></Press> : <View style={{ width: 30 }} />) : null}
       <Press onLongPress={onLong} sound={false} haptic={false} scaleTo={.98} style={[st.bubble, mine ? st.mine : st.theirs]}>
         {!mine && group && showName ? <T s={member?.profiles?.username || '…'} style={{ fontFamily: F.bold, fontSize: TS.tiny, color: C.cyan, marginBottom: 2 }} /> : null}

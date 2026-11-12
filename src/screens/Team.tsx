@@ -278,7 +278,7 @@ function Formation({ bottom }: { bottom: number }) {
         {pts.map(([nx, ny], i) => <Slot key={p.form + '-' + i} x={18 + nx * (fw - 36)} y={fh - ny * fh * 1.9} img={TEAM_IMG[teamKey(me)]} delay={i * 50} />)}
       </View>
       <T s={`${FORMS[p.form][0]} · ${FORMS[p.form][1]}`} style={{ fontFamily: F.title, fontSize: 18, marginTop: 12 }} />
-      <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', justifyContent: 'center', paddingHorizontal: 12, marginTop: 10 }}>
+      <View style={{ flexDirection: rowDir(), flexWrap: 'wrap', justifyContent: 'center', paddingHorizontal: 12, marginTop: 10 }}>
         {FORMS.map((f, i) => (
           <Press key={f[0]} onPress={() => set({ form: i })} style={[s.form, p.form === i && { borderColor: C.cyan, backgroundColor: 'rgba(79,227,255,.15)' }]}>
             <T s={f[0]} style={{ fontFamily: F.head, fontSize: 14, color: p.form === i ? '#fff' : C.dim }} />

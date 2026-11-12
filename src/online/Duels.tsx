@@ -6,7 +6,7 @@ import Animated, { FadeInDown, useAnimatedStyle, useSharedValue, withRepeat, wit
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { UI2 } from '../game/assets';
-import { Img, Panel, Press, Segment, T } from '../ui/kit';
+import { Img, Panel, Press, Segment, T, rowDir, startAlign } from '../ui/kit';
 import { C, F, fa } from '../ui/theme';
 import { buzz, sfx } from '../sound';
 import { useAuth } from '../net/auth';
@@ -63,9 +63,9 @@ export default function Duels({ onBack, onRoom, toast }: { onBack: () => void; o
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={async () => { setRefreshing(true); await Promise.all([load(), refreshProfile()]); setRefreshing(false); }} tintColor={C.cyan} progressViewOffset={ins.top + 70} />}
         showsVerticalScrollIndicator={false}>
         <Panel style={{ padding: S.m }} accent={C.gold}>
-          <View style={{ flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between' }}>
+          <View style={{ flexDirection: rowDir(), alignItems: 'center', justifyContent: 'space-between' }}>
             <T s="موجودی آنلاین" style={{ fontFamily: F.bold, fontSize: TS.small, color: C.dim }} />
-            <View style={{ flexDirection: 'row-reverse', alignItems: 'center' }}>
+            <View style={{ flexDirection: rowDir(), alignItems: 'center' }}>
               <Img src={UI2.c_coin} style={{ width: 22, height: 22 }} /><T s={fa(profile?.coins ?? 0)} style={{ fontFamily: F.title, fontSize: 16, marginHorizontal: 6 }} />
               <Img src={UI2.x_gem} style={{ width: 22, height: 22, marginRight: S.m }} /><T s={fa(profile?.gems ?? 0)} style={{ fontFamily: F.title, fontSize: 16, marginRight: 6, color: '#9fd8ff' }} />
             </View>
@@ -95,10 +95,10 @@ const TierCard = memo(function TierCard({ t, i, busy, disabled, afford, onPress 
           <Animated.View style={[st.sheen, gst]} />
           <LinearGradient colors={['rgba(255,255,255,.22)', 'rgba(255,255,255,0)']} style={[StyleSheet.absoluteFill, { height: '45%' }]} />
           <Img src={look.icon} style={{ width: 64, height: 64 }} />
-          <View style={{ flex: 1, marginRight: S.m, alignItems: 'flex-end' }}>
+          <View style={{ flex: 1, marginRight: S.m, alignItems: startAlign() }}>
             <T s={t.name} style={{ fontFamily: F.title, fontSize: 18, color: '#fff', textShadowColor: 'rgba(0,0,0,.6)', textShadowRadius: 6 }} />
             <T s={`${t.name_fa} · ${t.rule_fa}`} n={1} style={{ fontSize: TS.cap, color: '#e2ecff', marginTop: 2 }} />
-            <View style={{ flexDirection: 'row-reverse', marginTop: S.s }}>
+            <View style={{ flexDirection: rowDir(), marginTop: S.s }}>
               <Badge label={`ورودی ${money(t, t.entry)}`} color={afford ? C.cyan : C.red} />
               <Badge label={`جایزه ${money(t, t.prize)}`} color={C.gold} />
             </View>

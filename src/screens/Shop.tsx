@@ -1,66 +1,98 @@
-import React, { memo, useEffect, useMemo, useState } from 'react';
+import React, { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSequence, withSpring, withTiming } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { TEAM_IMG, UI2 } from '../game/assets';
-import { TEAMS, teamPrice } from '../game/data';
+import { TEAMS } from '../game/data';
 import { CHEST_EVERY, ChestPrize, Item, allItems, dailyDeals, grant } from '../game/meta';
-import { teamKey } from '../game/util';
+import { rarity, teamKey } from '../game/util';
 import { useStore } from '../store';
-import { Btn, Enter, Float, Img, Panel, Press, Pulse, Segment, T, Title } from '../ui/kit';
-import { C, F, G, fa } from '../ui/theme';
-import { useDiscs, useBuyDisc } from '../net/discs';
+import { Btn, Enter, Float, Img, Panel, Press, Pulse, Segment, T, Title, rowDir, startAlign, textStart } from '../ui/kit';
+import { C, F, G, N, fa } from '../ui/theme';
+import { discStats, localCoinPrice, onServer, useDiscs, useUnlockDisc } from '../net/discs';
+import { Icon } from '../ui/vec/Icon';
+import { Chamfer, Chest } from '../ui/vec/Art';
+import { tr } from '../i18n';
 import Packs from './Packs';
 import { useAuth } from '../net/auth';
-import { StatBars, discImg } from '../online/ui';
+import { StatBars } from '../online/ui';
 import { buzz, sfx } from '../sound';
 
 type Toast = (m: string, k?: string) => void;
-const RC = ['#8ea3d6', '#4fe3ff', '#b46bff', '#ffd257'];
+const RC = ['#8ea3d6', '#4fe3ff', '#b46bff', '#ffd257', '#ff7ae0'];
 
 function Shop({ top, bottom, toast, onChest }: { top: number; bottom: number; toast: Toast; onChest: (premium: boolean) => void }) {
   const { p, set } = useStore(); const { width: W } = useWindowDimensions();
   const [kind, setKind] = useState<'team' | 'ball' | 'field'>('team');
   const items = useMemo(() => allItems(p), [p.ownedTeams, p.ownedBalls, p.ownedFields]);
   const deals = useMemo(() => dailyDeals(p), [p.ownedTeams, p.ownedBalls, p.ownedFields]);
-  const legends = TEAMS.filter(t => teamPrice(t) >= 250);
+  const deluxe = useMemo(() => TEAMS.filter(t => t.tier === 'dlx'), []);
   const now = Date.now(), freeIn = Math.max(0, p.lastChest + CHEST_EVERY - now);
   const buy = (it: Item) => {
-    if (p.coins < it.price) { toast('سکه کافی نداری', 'err'); buzz('medium'); return; }
-    set(q => ({ coins: q.coins - it.price, ...grant(it)(q) })); sfx('goal'); buzz('success'); toast(`${it.name} باز شد!`, 'ok');
+    if (p.coins < it.price) { toast(tr('سکه کافی نداری', 'Not enough coins'), 'err'); buzz('medium'); return; }
+    set(q => ({ coins: q.coins - it.price, ...grant(it)(q) })); sfx('goal'); buzz('success'); toast(tr(`${it.name} باز شد!`, `${it.name} unlocked!`), 'ok');
   };
   const dz = useDiscs(); const auth = useAuth();
-  const buyDisc = useBuyDisc(toast, id => { set(q => ({ team: id, ownedTeams: q.ownedTeams.includes(id) ? q.ownedTeams : [...q.ownedTeams, id] })); sfx('win'); buzz('success'); });
-  const gemDiscs = useMemo(() => Object.values(dz.catalog).filter(d => d.price_gems > 0 && !dz.owned.has(d.id)).sort((a, b) => a.price_gems - b.price_gems), [dz.catalog, dz.owned]);
-  const cell = (W - 32 - 16) / 3;
+  const unlock = useUnlockDisc(toast);
+  const own = (id: string) => dz.has(id) || p.ownedTeams.includes(id);
+  const price = (id: string): [number, boolean] => (onServer(id) ? [dz.catalog[id]?.price_gems ?? 0, true] : [localCoinPrice(id), false]);
+  const stdDiscs = useMemo(() => TEAMS.filter(t => t.tier === 'std' && !own(t.id) && price(t.id)[0] > 0), [dz.catalog, dz.owned, p.ownedTeams]);
+  const cols = W >= 600 ? 5 : 3, cell = (W - 32 - (cols - 1) * 8) / cols;
   const list = items.filter(i => i.kind === kind);
-  const legW = Math.min(W * .42, 180);
+  const featured = deluxe[Math.floor(now / 86400000) % deluxe.length];
+  // section tiles jump inside the scroll view
+  const sv = useRef<any>(null); const ys = useRef<Record<string, number>>({});
+  const jump = (k: string) => sv.current?.scrollTo({ y: Math.max(0, (ys.current[k] ?? 0) - top + 40), animated: true });
+  const mark = (k: string) => (e: any) => { ys.current[k] = e.nativeEvent.layout.y; };
+  const tiles: [string, string, string, string, string][] = [['dlx', 'دلوکس', 'DELUXE', 'crown', '#ff7ae0'], ['chest', 'صندوقچه', 'CHESTS', 'chest', '#ffd257'], ['deal', 'پیشنهاد', 'DEALS', 'fire', '#3dffb0'], ['cat', 'فروشگاه', 'CATALOG', 'cart', '#27e6ff']];
   return (
-    <ScrollView contentContainerStyle={{ paddingTop: top, paddingBottom: bottom + 10 }} showsVerticalScrollIndicator={false}>
-      {/* legends banner */}
+    <ScrollView ref={sv} contentContainerStyle={{ paddingTop: top, paddingBottom: bottom + 10 }} showsVerticalScrollIndicator={false}>
       <Enter i={0} style={{ paddingHorizontal: 16 }}>
-        <View style={s.banner}>
-          <LinearGradient colors={['#3b1a00', '#1a0d3a', '#070a22']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
-          <Img src={UI2.screens} style={{ position: 'absolute', right: -30, top: -10, width: 260, height: 180, opacity: .25 }} />
-          <View style={{ flex: 1, padding: 14, alignItems: 'flex-end' }}>
-            <T s="LEGENDARY DISCS" style={{ fontFamily: F.head, fontSize: 9, letterSpacing: 3, color: C.gold }} />
-            <T s="دیسک‌های افسانه‌ای" style={{ fontFamily: F.title, fontSize: 19, marginTop: 2 }} />
-            <T s="قدرت و دقت بالا · با الماس" style={{ fontSize: 11, color: '#e8d7ad', marginTop: 4 }} />
-            <View style={s.tag}><T s="محدود" style={{ fontSize: 11, color: '#1b0e00', fontFamily: F.bold }} /></View>
-          </View>
-          <Float amp={6}><Img src={TEAM_IMG[teamKey(legends[(Math.floor(now / 86400000)) % legends.length])]} style={{ width: legW * .8, height: legW * .8, margin: 10 }} /></Float>
+        <View style={{ flexDirection: rowDir(), alignItems: 'baseline' }}>
+          <T s={tr('فروشگاه', 'SHOP')} style={{ fontFamily: F.title, fontSize: 22 }} />
+          <T s={tr('  SHOP', '  فروشگاه')} raw style={{ fontFamily: F.head, fontSize: 9, letterSpacing: 2, color: N.cyan }} />
         </View>
       </Enter>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 12, paddingTop: 10 }}>
-        {legends.map((t, i) => {
-          const own = dz.has(t.id), it = { name: t.name, price: dz.catalog[t.id]?.price_gems ?? 0, img: TEAM_IMG[teamKey(t)] };
+      <View style={{ flexDirection: rowDir(), paddingHorizontal: 12, marginTop: 10 }}>
+        {tiles.map(([k, f, e, ic, c], i) => (
+          <Enter key={k} i={i} style={{ flex: 1, paddingHorizontal: 4 }}>
+            <Press onPress={() => jump(k)} scaleTo={.93}>
+              <Chamfer k={10} color={c} color2={N.purple} style={{ height: 84 }}>
+                <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                  <Icon name={ic} size={34} />
+                  <T s={tr(f, e)} n={1} style={{ fontFamily: F.bold, fontSize: 11, marginTop: 4 }} />
+                </View>
+              </Chamfer>
+            </Press>
+          </Enter>
+        ))}
+      </View>
+
+      {/* Deluxe tier */}
+      <View onLayout={mark('dlx')} />
+      <Enter i={1} style={{ paddingHorizontal: 16, marginTop: 14 }}>
+        <View style={[s.banner, { flexDirection: rowDir() }]}>
+          <LinearGradient colors={['#3a0a3a', '#1a0d4a', '#05020f']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
+          <View style={{ flex: 1, padding: 14, alignItems: startAlign() }}>
+            <View style={[s.tag, { flexDirection: rowDir() }]}><Icon name="crown" size={13} glow={false} /><T s="DELUXE" raw style={{ fontFamily: F.head, fontSize: 9, letterSpacing: 2, color: '#2a0020', marginHorizontal: 3 }} /></View>
+            <T s={tr('دیسک‌های دلوکس', 'Deluxe discs')} style={{ fontFamily: F.title, fontSize: 19, marginTop: 6 }} />
+            <T s={tr('قدرت و دقت ۹ تا ۱۰ · بالاتر از همه', 'Power & accuracy 9–10 · above every disc')} n={2} style={{ fontSize: 11, color: '#f2d7ff', marginTop: 4, textAlign: textStart() }} />
+            <Btn small label={tr('خرید دیسک روز', 'Get disc of the day')} colors={['#ff7ae0', '#a43bff', '#ffd257']} style={{ marginTop: 10, alignSelf: 'stretch' }} onPress={() => !own(featured.id) && unlock(featured.id, featured.name)} disabled={own(featured.id)} />
+          </View>
+          <Float amp={6}><Img src={TEAM_IMG[teamKey(featured)]} style={{ width: 120, height: 130, margin: 8 }} /></Float>
+        </View>
+      </Enter>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 12, paddingTop: 10, flexDirection: rowDir() }}>
+        {deluxe.map((t, i) => {
+          const o = own(t.id), [pr, gem] = price(t.id), ds = discStats(t.id);
           return (
-            <Enter key={t.id} i={i}>
-              <Press onPress={() => !own && buyDisc(t.id, t.name)} style={[s.leg, own && { opacity: .6 }]}>
-                <LinearGradient colors={['rgba(255,210,87,.25)', 'rgba(10,12,34,.9)']} style={StyleSheet.absoluteFill} />
-                <Img src={it.img} style={{ width: 92, height: 92 }} />
-                <T s={t.name} n={1} style={{ fontFamily: F.bold, fontSize: 11, marginTop: 4 }} />
-                {own ? <T s="✓ داری" style={{ fontSize: 11, color: C.green, marginTop: 3 }} /> : <PriceTag v={it.price} gem />}
+            <Enter key={t.id} i={Math.min(i, 8)}>
+              <Press onPress={() => !o && unlock(t.id, t.name)} style={[s.leg, o && { opacity: .65 }]}>
+                <LinearGradient colors={['rgba(255,122,224,.28)', 'rgba(10,6,34,.95)']} style={StyleSheet.absoluteFill} />
+                <Img src={TEAM_IMG[teamKey(t)]} style={{ width: 92, height: 98 }} />
+                <T s={t.name} n={1} raw style={{ fontFamily: F.bold, fontSize: 11, marginTop: 2, maxWidth: 108 }} />
+                <T s={`⚡${ds.power} · ◎${ds.accuracy}`} raw style={{ fontFamily: F.head, fontSize: 9, color: '#ffd0f4', marginTop: 1 }} />
+                {o ? <T s={tr('✓ داری', '✓ Owned')} style={{ fontSize: 11, color: C.green, marginTop: 3 }} /> : <PriceTag v={pr} gem={gem} />}
               </Press>
             </Enter>
           );
@@ -70,41 +102,43 @@ function Shop({ top, bottom, toast, onChest }: { top: number; bottom: number; to
       <Packs toast={toast} />
 
       {/* chests */}
-      <Title s="صندوقچه‌ها" en="SUPPLY CHESTS" accent={C.violet} />
-      <View style={{ flexDirection: 'row-reverse', paddingHorizontal: 12 }}>
+      <View onLayout={mark('chest')} />
+      <Title s={tr('صندوقچه‌ها', 'Chests')} en="SUPPLY CHESTS" accent={C.violet} />
+      <View style={{ flexDirection: rowDir(), paddingHorizontal: 12 }}>
         <Enter i={1} style={{ flex: 1, padding: 4 }}>
           <Panel style={{ alignItems: 'center', padding: 12 }} accent={C.cyan} glow={!freeIn}>
-            <Shake on={!freeIn}><Img src={UI2.c_chest} style={{ width: 96, height: 96 }} /></Shake>
-            <T s="صندوقچه‌ی رایگان" style={{ fontFamily: F.bold, fontSize: 13, marginTop: 2 }} />
-            <T s="هر ۴ ساعت" style={{ fontSize: 10, color: C.dim }} />
+            <Shake on={!freeIn}><Chest size={104} rarity={1} /></Shake>
+            <T s={tr('صندوقچه‌ی رایگان', 'Free chest')} n={1} style={{ fontFamily: F.bold, fontSize: 13, marginTop: 4 }} />
+            <T s={tr('هر ۴ ساعت', 'Every 4 hours')} style={{ fontSize: 10, color: C.dim }} />
             <View style={{ alignSelf: 'stretch', marginTop: 8 }}>
-              <Btn small label={freeIn ? fmt(freeIn) : 'باز کن'} disabled={!!freeIn} colors={G.primary} onPress={() => onChest(false)} />
+              <Btn small label={freeIn ? fmt(freeIn) : tr('باز کن', 'OPEN')} disabled={!!freeIn} colors={G.primary} onPress={() => onChest(false)} />
             </View>
           </Panel>
         </Enter>
         <Enter i={2} style={{ flex: 1, padding: 4 }}>
           <Panel style={{ alignItems: 'center', padding: 12 }} accent={C.gold} glow>
-            <Shake on><Img src={UI2.x_chest} style={{ width: 96, height: 96 }} /></Shake>
-            <T s="صندوقچه‌ی سلطنتی" style={{ fontFamily: F.bold, fontSize: 13, marginTop: 2 }} />
-            <T s="آیتم کمیاب تضمینی‌تر" style={{ fontSize: 10, color: C.dim }} />
+            <Shake on><Chest size={104} rarity={3} /></Shake>
+            <T s={tr('صندوقچه‌ی سلطنتی', 'Royal chest')} n={1} style={{ fontFamily: F.bold, fontSize: 13, marginTop: 4 }} />
+            <T s={tr('آیتم کمیاب تضمینی‌تر', 'Better rare odds')} style={{ fontSize: 10, color: C.dim }} />
             <View style={{ alignSelf: 'stretch', marginTop: 8 }}>
-              <Btn small label="۶۰۰ سکه" icon={UI2.c_coin} colors={G.violet} onPress={() => { if (p.coins < 600) { toast('۶۰۰ سکه لازمه', 'err'); return; } onChest(true); }} />
+              <Btn small label={tr('۶۰۰ سکه', '600 coins')} icon={UI2.c_coin} colors={G.violet} onPress={() => { if (p.coins < 600) { toast(tr('۶۰۰ سکه لازمه', 'You need 600 coins'), 'err'); return; } onChest(true); }} />
             </View>
           </Panel>
         </Enter>
       </View>
 
       {/* deals */}
-      {deals.length ? <Title s="پیشنهاد امروز" en="DAILY DEALS · -30%" accent={C.green} /> : null}
-      <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', paddingHorizontal: 16, justifyContent: 'space-between' }}>
+      <View onLayout={mark('deal')} />
+      {deals.length ? <Title s={tr('پیشنهاد امروز', "Today's deals")} en="DAILY DEALS · -30%" accent={C.green} /> : null}
+      <View style={{ flexDirection: rowDir(), flexWrap: 'wrap', paddingHorizontal: 16, justifyContent: 'space-between' }}>
         {deals.map((it, i) => (
           <Enter key={it.kind + it.id} i={i} style={{ width: (W - 32 - 8) / 2, marginBottom: 8 }}>
             <Press onPress={() => buy(it)}>
-              <Panel style={{ flexDirection: 'row-reverse', alignItems: 'center', padding: 10 }} accent={RC[it.rar]}>
+              <Panel style={{ flexDirection: rowDir(), alignItems: 'center', padding: 10 }} accent={RC[it.rar]}>
                 <Img src={it.img} style={it.kind === 'field' ? { width: 40, height: 54, borderRadius: 6 } : { width: 54, height: 54, borderRadius: 27 }} fit={it.kind === 'field' ? 'cover' : 'contain'} />
-                <View style={{ flex: 1, marginRight: 8, alignItems: 'flex-end' }}>
-                  <T s={it.name} n={1} style={{ fontFamily: F.bold, fontSize: 12 }} />
-                  <View style={s.off}><T s="-۳۰٪" style={{ fontSize: 10, color: '#03140c', fontFamily: F.bold }} /></View>
+                <View style={{ flex: 1, marginHorizontal: 8, alignItems: startAlign() }}>
+                  <T s={it.name} n={1} raw style={{ fontFamily: F.bold, fontSize: 12 }} />
+                  <View style={s.off}><T s={tr('-۳۰٪', '-30%')} style={{ fontSize: 10, color: '#03140c', fontFamily: F.bold }} /></View>
                   <PriceTag v={it.price} />
                 </View>
               </Panel>
@@ -114,44 +148,48 @@ function Shop({ top, bottom, toast, onChest }: { top: number; bottom: number; to
       </View>
 
       {/* catalogue */}
-      <Title s="همه‌ی تجهیزات" en="CATALOGUE" />
+      <View onLayout={mark('cat')} />
+      <Title s={tr('همه‌ی تجهیزات', 'Catalogue')} en="CATALOGUE" />
       <View style={{ paddingHorizontal: 16, marginBottom: 10 }}>
-        <Segment value={kind} onChange={setKind} items={[['team', 'دیسک'], ['ball', 'توپ'], ['field', 'زمین']]} accent={C.gold} />
+        <Segment value={kind} onChange={setKind} items={[['team', tr('دیسک', 'Discs')], ['ball', tr('توپ', 'Balls')], ['field', tr('زمین', 'Pitches')]]} accent={C.gold} />
       </View>
       {kind === 'team' ? (
-        <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', paddingHorizontal: 16 }}>
-          {!auth.profile ? <T s="قیمت دیسک‌ها به الماس است؛ با ورود آنلاین (حتی مهمان) ۱۵۰ الماس هدیه می‌گیری." style={{ fontSize: 11, color: C.dim, textAlign: 'right', marginBottom: 8, width: '100%' }} /> : null}
-          {gemDiscs.slice(0, 60).map((d, i) => (
-            <Press key={d.id} onPress={() => buyDisc(d.id, d.name)} style={{ width: cell, marginLeft: i % 3 === 2 ? 0 : 8, marginBottom: 8 }} scaleTo={.93}>
-              <View style={[s.card, { borderColor: RC[d.price_gems >= 250 ? 3 : d.price_gems >= 180 ? 2 : 1] + '66', paddingHorizontal: 6 }]}>
-                <Img src={discImg(d.id)} style={{ width: cell * .6, height: cell * .6, borderRadius: cell }} />
-                <T s={d.name} n={1} style={{ fontFamily: F.bold, fontSize: 10, marginTop: 4 }} />
-                <StatBars power={d.power} accuracy={d.accuracy} compact />
-                <PriceTag v={d.price_gems} gem />
-              </View>
-            </Press>
-          ))}
+        <View style={{ flexDirection: rowDir(), flexWrap: 'wrap', paddingHorizontal: 16 }}>
+          {!auth.profile ? <T s={tr('دیسک‌های سرور با الماس، دیسک‌های تازه با سکه باز می‌شن؛ با ورود آنلاین ۱۵۰ الماس هدیه می‌گیری.', 'Server discs cost gems, the new ones unlock with coins; sign in (even as a guest) for 150 free gems.')} style={{ fontSize: 11, color: C.dim, textAlign: textStart(), marginBottom: 8, width: '100%' }} /> : null}
+          {stdDiscs.slice(0, 60).map((t, i) => {
+            const [pr, gem] = price(t.id), ds = discStats(t.id);
+            return (
+              <Press key={t.id} onPress={() => unlock(t.id, t.name)} style={{ width: cell, marginHorizontal: (i % cols) === cols - 1 ? 0 : 4, marginBottom: 8 }} scaleTo={.93}>
+                <View style={[s.card, { borderColor: RC[rarity(t)] + '66', paddingHorizontal: 6 }]}>
+                  <Img src={TEAM_IMG[teamKey(t)]} style={{ width: cell * .62, height: cell * .62 }} />
+                  <T s={t.name} n={1} raw style={{ fontFamily: F.bold, fontSize: 10, marginTop: 4 }} />
+                  <StatBars power={ds.power} accuracy={ds.accuracy} compact />
+                  <PriceTag v={pr} gem={gem} />
+                </View>
+              </Press>
+            );
+          })}
         </View>
       ) : null}
-      <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', paddingHorizontal: 16 }}>
+      <View style={{ flexDirection: rowDir(), flexWrap: 'wrap', paddingHorizontal: 16 }}>
         {list.slice(0, 60).map((it, i) => (
-          <Press key={it.kind + it.id} onPress={() => buy(it)} style={{ width: cell, marginLeft: i % 3 === 2 ? 0 : 8, marginBottom: 8 }} scaleTo={.93}>
+          <Press key={it.kind + it.id} onPress={() => buy(it)} style={{ width: cell, marginHorizontal: (i % cols) === cols - 1 ? 0 : 4, marginBottom: 8 }} scaleTo={.93}>
             <View style={[s.card, { borderColor: RC[it.rar] + '66' }]}>
               <LinearGradient colors={[RC[it.rar] + '30', 'rgba(8,12,34,.2)']} style={StyleSheet.absoluteFill} />
               <Img src={it.img} style={it.kind === 'field' ? { width: cell * .52, height: cell * .7, borderRadius: 6 } : { width: cell * .64, height: cell * .64, borderRadius: cell }} fit={it.kind === 'field' ? 'cover' : 'contain'} />
-              <T s={it.name} n={1} style={{ fontFamily: F.bold, fontSize: 10, marginTop: 5 }} />
+              <T s={it.name} n={1} raw style={{ fontFamily: F.bold, fontSize: 10, marginTop: 5 }} />
               <PriceTag v={it.price} />
             </View>
           </Press>
         ))}
       </View>
-      {!list.length && kind !== 'team' ? <T s="همه‌چیز این بخش رو داری، اسطوره!" style={{ textAlign: 'center', color: C.dim, marginTop: 10 }} /> : null}
+      {!list.length && kind !== 'team' ? <T s={tr('همه‌چیز این بخش رو داری، اسطوره!', 'You own everything here, legend!')} style={{ textAlign: 'center', color: C.dim, marginTop: 10 }} /> : null}
     </ScrollView>
   );
 }
 export default memo(Shop);
 
-const fmt = (ms: number) => { const m = Math.ceil(ms / 60000), h = Math.floor(m / 60); return h ? `${fa(h)}س ${fa(m % 60)}د` : `${fa(m)} دقیقه`; };
+const fmt = (ms: number) => { const m = Math.ceil(ms / 60000), h = Math.floor(m / 60); return h ? tr(`${fa(h)}س ${fa(m % 60)}د`, `${h}h ${m % 60}m`) : tr(`${fa(m)} دقیقه`, `${m} min`); };
 
 function PriceTag({ v, gem }: { v: number; gem?: boolean }) {
   return (
@@ -185,13 +223,13 @@ export function ChestOpen({ prize, premium, onDone }: { prize: ChestPrize; premi
   const it = prize.item;
   return (
     <View style={{ alignItems: 'center', padding: 22 }}>
-      <T s={premium ? 'صندوقچه‌ی سلطنتی' : 'صندوقچه‌ی رایگان'} style={{ fontFamily: F.title, fontSize: 20 }} />
+      <T s={premium ? tr('صندوقچه‌ی سلطنتی', 'Royal chest') : tr('صندوقچه‌ی رایگان', 'Free chest')} style={{ fontFamily: F.title, fontSize: 20 }} />
       <View style={{ height: 220, width: '100%', alignItems: 'center', justifyContent: 'center' }}>
-        <Animated.View style={[{ position: 'absolute' }, ry]}><Img src={UI2.ring} style={{ width: 220, height: 220, opacity: open ? .8 : .3 }} /></Animated.View>
+        <Animated.View style={[{ position: 'absolute', width: 220, height: 220, borderRadius: 110, borderWidth: 2, borderStyle: 'dashed', borderColor: premium ? '#ffd257' : '#27e6ff', opacity: open ? .8 : .3 }, ry]} />
         <Pulse size={140} color={premium ? 'rgba(255,210,87,.4)' : 'rgba(79,227,255,.4)'} />
-        {!open ? <Animated.View style={ch}><Img src={premium ? UI2.x_chest : UI2.c_chest} style={{ width: 170, height: 170 }} /></Animated.View> : (
+        {!open ? <Animated.View style={ch}><Chest size={170} rarity={premium ? 3 : 1} /></Animated.View> : (
           <Animated.View style={[{ alignItems: 'center' }, pr]}>
-            {it ? <Img src={it.img} style={it.kind === 'field' ? { width: 110, height: 150, borderRadius: 12 } : { width: 150, height: 150, borderRadius: 75 }} fit={it.kind === 'field' ? 'cover' : 'contain'} /> : <Img src={UI2.x_coins} style={{ width: 150, height: 150 }} />}
+            {it ? <Img src={it.img} style={it.kind === 'field' ? { width: 110, height: 150, borderRadius: 12 } : { width: 150, height: 150, borderRadius: 75 }} fit={it.kind === 'field' ? 'cover' : 'contain'} /> : <View style={{ alignItems: 'center' }}><Chest size={120} rarity={premium ? 3 : 1} open /><Icon name="coins" size={64} /></View>}
           </Animated.View>
         )}
       </View>
@@ -207,11 +245,11 @@ export function ChestOpen({ prize, premium, onDone }: { prize: ChestPrize; premi
 }
 
 const s = StyleSheet.create({
-  banner: { height: 150, borderRadius: 24, overflow: 'hidden', flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,210,87,.5)', shadowColor: C.gold, shadowOpacity: .45, shadowRadius: 18, shadowOffset: { width: 0, height: 0 }, elevation: 10 },
-  tag: { marginTop: 8, paddingHorizontal: 10, height: 22, borderRadius: 11, backgroundColor: C.gold, justifyContent: 'center' },
-  leg: { width: 116, height: 150, marginHorizontal: 4, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,210,87,.4)', overflow: 'hidden', alignItems: 'center', justifyContent: 'center', backgroundColor: '#0a0d26' },
+  banner: { minHeight: 160, borderRadius: 14, overflow: 'hidden', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,122,224,.6)', shadowColor: '#ff7ae0', shadowOpacity: .45, shadowRadius: 18, shadowOffset: { width: 0, height: 0 }, elevation: 10 },
+  tag: { paddingHorizontal: 8, height: 22, borderRadius: 4, backgroundColor: '#ff9ae6', alignItems: 'center' },
+  leg: { width: 120, height: 176, marginHorizontal: 4, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,122,224,.5)', overflow: 'hidden', alignItems: 'center', justifyContent: 'center', backgroundColor: '#0a0d26' },
   price: { flexDirection: 'row', alignItems: 'center', marginTop: 5, paddingHorizontal: 8, height: 22, borderRadius: 11, backgroundColor: 'rgba(255,210,87,.14)', borderWidth: 1, borderColor: 'rgba(255,210,87,.3)' },
   off: { marginTop: 3, paddingHorizontal: 6, height: 16, borderRadius: 8, backgroundColor: C.green, justifyContent: 'center' },
   best: { position: 'absolute', top: 6, left: 6, paddingHorizontal: 6, height: 16, borderRadius: 8, backgroundColor: C.gold, justifyContent: 'center', zIndex: 2 },
-  card: { borderRadius: 16, borderWidth: 1, overflow: 'hidden', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 4, backgroundColor: 'rgba(8,12,34,.8)' },
+  card: { borderRadius: 10, borderWidth: 1, overflow: 'hidden', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 4, backgroundColor: 'rgba(8,12,34,.8)' },
 });

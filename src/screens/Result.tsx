@@ -4,7 +4,7 @@ import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withRepe
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TEAM_IMG, UI, UI2 } from '../game/assets';
 import { teamKey } from '../game/util';
-import { Btn, Float, Img, Panel, Pulse, T } from '../ui/kit';
+import { Btn, Float, Img, Panel, Pulse, T, rowDir, startAlign } from '../ui/kit';
 import { C, F, G, fa } from '../ui/theme';
 import type { MatchResult } from './Match';
 
@@ -40,7 +40,7 @@ export default function Result({ r, reward, names, onAgain, onHome, cup, levelUp
       </Panel>
 
       {reward ? (
-        <View style={{ flexDirection: 'row-reverse', marginTop: 12, alignSelf: 'stretch' }}>
+        <View style={{ flexDirection: rowDir(), marginTop: 12, alignSelf: 'stretch' }}>
           <Rw img={UI2.c_coin} v={reward.coins} c={C.gold} d={200} />
           <Rw img={UI2.x_star} v={reward.xp} c={C.cyan} d={350} label="XP" />
           <Rw img={UI2.x_trophy} v={reward.trophies} c={reward.trophies >= 0 ? C.green : C.red} d={500} sign />
@@ -49,16 +49,16 @@ export default function Result({ r, reward, names, onAgain, onHome, cup, levelUp
       ) : null}
 
       {levelUp ? (
-        <Panel style={{ marginTop: 12, alignSelf: 'stretch', flexDirection: 'row-reverse', alignItems: 'center', padding: 12 }} accent={C.violet} glow>
+        <Panel style={{ marginTop: 12, alignSelf: 'stretch', flexDirection: rowDir(), alignItems: 'center', padding: 12 }} accent={C.violet} glow>
           <Img src={UI2.x_crown} style={{ width: 50, height: 50 }} />
-          <View style={{ flex: 1, marginHorizontal: 10, alignItems: 'flex-end' }}>
+          <View style={{ flex: 1, marginHorizontal: 10, alignItems: startAlign() }}>
             <T s={`سطح ${fa(levelUp)}!`} style={{ fontFamily: F.title, fontSize: 18, color: '#d6b8ff' }} />
             <T s="به سطح جدید رسیدی · ۱۰۰+ سکه هدیه" style={{ fontSize: 11, color: C.dim }} />
           </View>
         </Panel>
       ) : null}
 
-      <View style={{ flexDirection: 'row-reverse', alignItems: 'flex-end', alignSelf: 'stretch', marginTop: 14 }}>
+      <View style={{ flexDirection: rowDir(), alignItems: startAlign(), alignSelf: 'stretch', marginTop: 14 }}>
         <Float amp={4}><Img src={out === 'defeat' ? UI2.mascot3 : UI2.mascot2} style={{ width: 96, height: 96 }} /></Float>
         <View style={s.say}><T s={out === 'victory' ? 'عالی بود کاپیتان! همین‌طوری ادامه بده.' : out === 'defeat' ? 'اشکالی نداره، دست بعدی مال ماست!' : 'مساوی! یه ضربه تا برد فاصله داشتیم.'} style={{ fontSize: 12, color: '#e6f4ff' }} /></View>
       </View>

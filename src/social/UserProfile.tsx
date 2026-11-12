@@ -4,7 +4,7 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { UI } from '../game/assets';
-import { Btn, Img, Panel, T } from '../ui/kit';
+import { Btn, Img, Panel, T, rowDir, startAlign } from '../ui/kit';
 import { C, F, G, fa } from '../ui/theme';
 import { buzz } from '../sound';
 import { useAuth } from '../net/auth';
@@ -67,19 +67,19 @@ export default function UserProfile({ id, onBack, toast }: { id: string; onBack:
           <T s={p.username} style={{ fontFamily: F.title, fontSize: 22, marginTop: S.s }} />
           <T s={isOnline(p.online_at) ? 'آنلاین' : `آخرین بازدید ${timeAgo(p.online_at)} پیش`} style={{ fontSize: TS.cap, color: isOnline(p.online_at) ? C.green : C.dim }} />
           {p.bio ? <T s={p.bio} style={{ fontSize: TS.small, color: '#d6e6ff', textAlign: 'center', marginTop: S.s, paddingHorizontal: S.l }} /> : null}
-          <View style={{ flexDirection: 'row-reverse', marginTop: S.s, flexWrap: 'wrap', justifyContent: 'center', rowGap: 4 }}>
+          <View style={{ flexDirection: rowDir(), marginTop: S.s, flexWrap: 'wrap', justifyContent: 'center', rowGap: 4 }}>
             <Badge label={`سطح ${fa(p.level)}`} color={C.gold} />
             <Badge label={lg?.name_fa || p.league} color={lg?.color || C.cyan} />
             {club ? <Badge label={`[${club.tag}] ${club.name}`} color={C.orange} /> : null}
           </View>
-          <View style={{ flexDirection: 'row-reverse', marginTop: S.m }}>
+          <View style={{ flexDirection: rowDir(), marginTop: S.m }}>
             {([['دنبال‌کننده', stats.followers], ['دنبال‌شده', stats.following], ['امتیاز', p.rating], ['آرنا', p.arena_points]] as const).map(([l, v]) => (
               <View key={l} style={{ alignItems: 'center', width: 76 }}><T s={fa(v)} style={{ fontFamily: F.title, fontSize: 16 }} /><T s={l} style={{ fontSize: TS.tiny, color: C.dim }} /></View>
             ))}
           </View>
         </View>
         {!self ? (
-          <View style={{ flexDirection: 'row-reverse', marginTop: S.m }}>
+          <View style={{ flexDirection: rowDir(), marginTop: S.m }}>
             <Btn label={busy === 'f' ? '…' : follows ? 'دنبال می‌کنی ✓' : 'دنبال کردن'} small colors={follows ? G.dark : G.primary} onPress={follow} style={{ flex: 1, marginLeft: S.s }} />
             <Btn label={busy === 'm' ? '…' : 'پیام خصوصی'} small colors={G.green} onPress={dm} disabled={blocked} style={{ flex: 1 }} />
           </View>
@@ -87,12 +87,12 @@ export default function UserProfile({ id, onBack, toast }: { id: string; onBack:
         {!self && me?.club_id && !p.club_id && (myRole === 'leader' || myRole === 'officer') ? <Btn label={busy === 'i' ? '…' : 'دعوت به باشگاه من'} small colors={G.gold} onPress={invite} style={{ marginTop: S.s }} /> : null}
         <Panel style={{ padding: S.m, marginTop: S.m }} accent="transparent">
           <T s="آمار" style={{ fontFamily: F.bold, fontSize: TS.body, textAlign: 'right', marginBottom: S.s }} />
-          <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between' }}>
+          <View style={{ flexDirection: rowDir(), justifyContent: 'space-between' }}>
             {([['برد', p.wins, C.green], ['تساوی', p.draws, C.gold], ['باخت', p.losses, C.red], ['گل', p.goals, C.cyan], ['درصد برد', wr, C.violet]] as const).map(([l, v, c]) => (
               <View key={l} style={{ alignItems: 'center' }}><T s={l === 'درصد برد' ? `${fa(v)}٪` : fa(v)} style={{ fontFamily: F.title, fontSize: 17, color: c }} /><T s={l} style={{ fontSize: TS.tiny, color: C.dim }} /></View>
             ))}
           </View>
-          <View style={{ flexDirection: 'row-reverse', alignItems: 'center', marginTop: S.m }}>
+          <View style={{ flexDirection: rowDir(), alignItems: 'center', marginTop: S.m }}>
             <Img src={(UI as any)[LEAGUE_IMG[p.league] || 'medal_bronze']} style={{ width: 44, height: 44 }} />
             <View style={{ flex: 1, marginRight: S.s }}>
               <T s="دیسک فعلی" style={{ fontSize: TS.cap, color: C.dim, textAlign: 'right' }} />

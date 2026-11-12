@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSequence, withSpring, withTiming } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { UI, UI2 } from '../game/assets';
-import { Img, Press, T } from '../ui/kit';
+import { Img, Press, T, rowDir, startAlign } from '../ui/kit';
 import { C, F, fa } from '../ui/theme';
 import { buzz, sfx } from '../sound';
 import { useAuth } from '../net/auth';
@@ -28,8 +28,8 @@ function OnlineCard({ onOnline }: { onOnline: (e?: OnlineEntry) => void }) {
           <LinearGradient colors={['rgba(255,255,255,.3)', 'rgba(255,255,255,0)']} style={[StyleSheet.absoluteFill, { height: '50%' }]} />
           <Animated.View style={[st.shine, shine]} />
           <Img src={UI.portal_globe} style={{ width: 84, height: 84 }} />
-          <View style={{ flex: 1, alignItems: 'flex-end', marginRight: 8 }}>
-            <View style={{ flexDirection: 'row-reverse', alignItems: 'center' }}>
+          <View style={{ flex: 1, alignItems: startAlign(), marginRight: 8 }}>
+            <View style={{ flexDirection: rowDir(), alignItems: 'center' }}>
               <T s="آنلاین" style={{ fontFamily: F.title, fontSize: 24, color: '#fff', textShadowColor: C.cyan, textShadowRadius: 12 }} />
               <View style={st.live}><View style={st.dot} /><T s="LIVE" style={{ fontFamily: F.head, fontSize: 9, color: '#fff', letterSpacing: 1 }} /></View>
             </View>
@@ -38,7 +38,7 @@ function OnlineCard({ onOnline }: { onOnline: (e?: OnlineEntry) => void }) {
           </View>
         </Animated.View>
       </Pressable>
-      <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', marginTop: 8, justifyContent: 'space-between', rowGap: 8 }}>
+      <View style={{ flexDirection: rowDir(), flexWrap: 'wrap', marginTop: 8, justifyContent: 'space-between', rowGap: 8 }}>
         {links.map(([k, l, img], i) => (
           <Press key={k} onPress={() => onOnline(k)} style={[st.link, { width: '32%' }]}>
             <Img src={img} style={{ width: 26, height: 26 }} />

@@ -4,7 +4,7 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { TEAM_IMG, UI2 } from '../game/assets';
 import { teamById, teamKey } from '../game/util';
-import { Img, Press, T, Title } from '../ui/kit';
+import { Img, Press, T, Title, rowDir, startAlign } from '../ui/kit';
 import { C, F, fa } from '../ui/theme';
 import { buzz, sfx } from '../sound';
 import { useAuth } from '../net/auth';
@@ -30,7 +30,7 @@ function Packs({ toast }: { toast: (m: string, k?: string) => void }) {
   return (
     <View>
       <Title s="بسته‌های دیسک" en="DISC PACKS · 130–300 💎" accent={C.gold} />
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 12, flexDirection: 'row-reverse' }}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 12, flexDirection: rowDir() }}>
         {packs.map(pk => {
           const owned = pk.discs.filter(d => dz.owned.has(d)).length, all = owned === pk.discs.length;
           return (

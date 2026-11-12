@@ -6,6 +6,8 @@ import { Disc, errFa, rpc, supabase } from './supabase';
 import { useAuth } from './auth';
 import type { DiscStats } from '../game/engine';
 import { DISC_META } from '../game/data';
+import { useStore } from '../store';
+import { num, tr } from '../i18n';
 
 const KEY = 'nexora.discs.v1';
 let catalog: Record<string, Disc> = {};
@@ -82,4 +84,18 @@ export function useBuyDisc(toast: (m: string, k?: string) => void, onEquipped?: 
     const e = await dz.equip(id); if (!e.ok) { toast(e.error!, 'err'); return false; }
     onEquipped?.(id); return true;
   }, [dz, auth.uid, auth.profile?.gems]);
+}
+
+// v3: one unlock flow for every disc — server catalog discs are bought with gems (buy_disc RPC),
+// discs the server does not list yet are unlocked locally with coins. Returns true when equipped.
+export function useUnlockDisc(toast: (m: string, k?: string) => void) {
+  const { p, set } = useStore();
+  const buyServer = useBuyDisc(toast, id => set(q => ({ team: id, ownedTeams: q.ownedTeams.includes(id) ? q.ownedTeams : [...q.ownedTeams, id] })));
+  return useCallback(async (id: string, name: string) => {
+    if (onServer(id)) return buyServer(id, name);
+    const price = localCoinPrice(id);
+    if (p.coins < price) { toast(tr(`${num(price - p.coins)} سکه‌ی دیگر لازم داری`, `You need ${num(price - p.coins)} more coins`), 'err'); return false; }
+    set(q => ({ coins: q.coins - price, team: id, ownedTeams: q.ownedTeams.includes(id) ? q.ownedTeams : [...q.ownedTeams, id] }));
+    toast(tr(`${name} باز شد!`, `${name} unlocked!`), 'ok'); return true;
+  }, [p.coins, buyServer]);
 }

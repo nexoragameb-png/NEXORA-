@@ -2,6 +2,7 @@
 import { Skia, SkCanvas, SkImage, SkPaint, SkPicture, TileMode, FilterMode, MipmapMode, BlendMode, PaintStyle, StrokeCap, BlurStyle, ClipOp, createPicture } from '@shopify/react-native-skia';
 import { Engine, Body, PR, aimPreview } from './engine';
 import { TRAILS } from './data';
+import { skyAt } from '../ui/daytime';
 
 const BALL_SKSL = `
 uniform shader img;
@@ -77,6 +78,19 @@ export function staticLayer(e: Engine, v: View, im: Images): SkPicture {
       o.setMaskFilter(Skia.MaskFilter.MakeBlur(BlurStyle.Normal, 4, true));
       c.drawRRect(Skia.RRectXY(Skia.XYWHRect(F.l, F.t, F.r - F.l, F.b - F.t), 70, 70), o);
       c.restore();
+    }
+    // automatic day / night ambience (local clock): darker pitch + four floodlight pools at night,
+    // warm low sun at dawn / dusk, plain daylight otherwise. Baked once into the static layer.
+    const sky = skyAt();
+    if (sky.fieldDim > 0) { const d = P(); d.setColor(col('#02010a', sky.fieldDim)); c.drawRect(Skia.XYWHRect(0, 0, v.W, v.H), d); }
+    if (sky.lights > .3) {
+      const L = P(); L.setBlendMode(BlendMode.Plus);
+      for (const [fx, fy] of [[.08, .1], [.92, .1], [.08, .9], [.92, .9]]) {
+        const x = v.W * fx, y = v.H * fy, R = Math.max(v.W, v.H) * .55;
+        L.setShader(Skia.Shader.MakeRadialGradient({ x, y }, R, [col('#dff2ff', .16 * sky.lights), col('#dff2ff', 0)], null, TileMode.Clamp)); c.drawCircle(x, y, R, L);
+      }
+    } else if (sky.k === 'dawn' || sky.k === 'dusk') {
+      const w = P(); w.setShader(Skia.Shader.MakeLinearGradient({ x: 0, y: 0 }, { x: v.W, y: v.H }, [col('#ff9a6b', .12), col('#ff9a6b', 0)], null, TileMode.Clamp)); c.drawRect(Skia.XYWHRect(0, 0, v.W, v.H), w);
     }
   }, { width: v.W, height: v.H });
 }

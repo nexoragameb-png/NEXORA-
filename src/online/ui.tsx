@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TEAM_IMG, UI2 } from '../game/assets';
 import { TEAMS, Team } from '../game/data';
 import { teamById, teamKey } from '../game/util';
-import { Btn, Img, Panel, Press, T } from '../ui/kit';
+import { Btn, Img, Panel, Press, T, rowDir, startAlign } from '../ui/kit';
 import { C, F, G, faNum } from '../ui/theme';
 import type { League } from '../net/supabase';
 import { supabase } from '../net/supabase';
@@ -40,7 +40,7 @@ export function Header({ title, en, onBack, right, accent = C.cyan }: { title: s
       <LinearGradient pointerEvents="none" colors={['rgba(2,4,14,.95)', 'rgba(2,4,14,.7)', 'transparent']} style={StyleSheet.absoluteFill} />
       <Press onPress={onBack} style={st.back} haptic><T s="‹" style={{ fontFamily: F.title, fontSize: 26, color: C.text, marginTop: -4 }} /></Press>
       <View style={{ minWidth: 44, flexDirection: 'row', alignItems: 'center' }}>{right}</View>
-      <View style={{ flex: 1, alignItems: 'flex-end', marginLeft: S.s }}>
+      <View style={{ flex: 1, alignItems: startAlign(), marginLeft: S.s }}>
         {en ? <T s={en} n={1} style={{ fontFamily: F.head, fontSize: 9, letterSpacing: 3, color: accent }} /> : null}
         <T s={title} n={1} style={{ fontFamily: F.title, fontSize: TS.title }} />
       </View>
@@ -191,7 +191,7 @@ export function VoiceBar({ link, enabled = true, compact }: { link: RoomLink; en
 }
 
 export const Divider = () => <View style={{ height: 1, backgroundColor: 'rgba(120,180,255,.14)', marginVertical: S.s }} />;
-export const Row = ({ children, style }: { children: React.ReactNode; style?: any }) => <View style={[{ flexDirection: 'row-reverse', alignItems: 'center' }, style]}>{children}</View>;
+export const Row = ({ children, style }: { children: React.ReactNode; style?: any }) => <View style={[{ flexDirection: rowDir(), alignItems: 'center' }, style]}>{children}</View>;
 export const num = (n: number | string) => faNum(n);
 
 export function Card({ children, style, accent, onPress }: { children: React.ReactNode; style?: any; accent?: string; onPress?: () => void }) {

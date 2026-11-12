@@ -4,7 +4,7 @@ import { FlatList, RefreshControl, ScrollView, StyleSheet, View } from 'react-na
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { UI, UI2 } from '../game/assets';
-import { Btn, Enter, Img, Panel, Press, Segment, T, Toggle } from '../ui/kit';
+import { Btn, Enter, Img, Panel, Press, Segment, T, Toggle, rowDir, startAlign } from '../ui/kit';
 import { Sheet, SheetHandle } from '../ui/Chrome';
 import { C, F, G, fa } from '../ui/theme';
 import { buzz, sfx } from '../sound';
@@ -75,10 +75,10 @@ export default function Hub({ onBack, onRoom, onNav, toast }: Props) {
       {profile && lp ? (
         <Enter i={0} style={{ paddingHorizontal: S.l }}>
           <Press onPress={() => onNav('ranks')} scaleTo={.98}>
-            <Panel style={{ padding: S.m, flexDirection: 'row-reverse', alignItems: 'center' }} accent={C.gold}>
+            <Panel style={{ padding: S.m, flexDirection: rowDir(), alignItems: 'center' }} accent={C.gold}>
               <Avatar avatar={profile.equipped_disc || profile.avatar} url={profile.avatar_url} size={52} ring={C.gold} />
-              <View style={{ flex: 1, marginRight: S.m, alignItems: 'flex-end' }}>
-                <View style={{ flexDirection: 'row-reverse', alignItems: 'center' }}>
+              <View style={{ flex: 1, marginRight: S.m, alignItems: startAlign() }}>
+                <View style={{ flexDirection: rowDir(), alignItems: 'center' }}>
                   <T s={profile.username} n={1} style={{ fontFamily: F.bold, fontSize: TS.h, maxWidth: 150 }} />
                   <Badge label={`سطح ${fa(profile.level)}`} color={C.gold} />
                 </View>
@@ -95,14 +95,14 @@ export default function Hub({ onBack, onRoom, onNav, toast }: Props) {
       <Enter i={1} style={{ paddingHorizontal: S.l, marginTop: S.m }}>
         <Panel style={{ padding: S.m }} accent={C.cyan} glow>
           <LinearGradient colors={['rgba(79,227,255,.14)', 'transparent']} style={StyleSheet.absoluteFill} />
-          <View style={{ flexDirection: 'row-reverse', alignItems: 'center', marginBottom: S.s }}>
+          <View style={{ flexDirection: rowDir(), alignItems: 'center', marginBottom: S.s }}>
             <Img src={UI2.x_ball} style={{ width: 36, height: 36 }} />
-            <View style={{ marginRight: S.s, flex: 1, alignItems: 'flex-end' }}>
+            <View style={{ marginRight: S.s, flex: 1, alignItems: startAlign() }}>
               <T s="مسابقه‌ی سریع" style={{ fontFamily: F.title, fontSize: TS.h }} />
               <T s="هم‌سطح‌ترین حریف آنلاین را پیدا کن" style={{ fontSize: TS.cap, color: C.dim }} />
             </View>
           </View>
-          <View style={{ flexDirection: 'row-reverse' }}>
+          <View style={{ flexDirection: rowDir() }}>
             {MODES.map((m, i) => (
               <Btn key={m} label={busy === 'quick' + m ? '…' : m.toUpperCase()} sub={MODE_FA[m]} small onPress={() => quick(m)} disabled={!!busy}
                 colors={i === 0 ? G.primary : i === 1 ? G.violet : G.gold} style={{ flex: 1, marginLeft: i < 2 ? S.s : 0 }} />
@@ -112,7 +112,7 @@ export default function Hub({ onBack, onRoom, onNav, toast }: Props) {
       </Enter>
 
       {/* shortcuts */}
-      <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: S.s, paddingHorizontal: S.l, marginTop: S.m }}>
+      <View style={{ flexDirection: rowDir(), flexWrap: 'wrap', justifyContent: 'space-between', rowGap: S.s, paddingHorizontal: S.l, marginTop: S.m }}>
         {([['duels', 'دوئل آرنا', UI2.x_gem, C.gold], ['worldcup', 'جام جهانی', UI2.x_trophy, C.gold], ['arena', 'نردبان آرنا', UI2.x_crown, C.violet], ['tours', 'تورنمنت', UI2.x_medal, C.orange],
           ['ranks', 'رده‌بندی', UI2.x_shield, C.sky], ['challenges', 'چالش‌ها', UI2.c_calendar, C.green], ['social', 'پیام و باشگاه', UI2.c_profile, C.pink], ['social', '', null, 'transparent']] as const).map(([k, l, img, c], i) => !img ? <View key={'x' + i} style={{ width: '23.5%' }} /> : (
           <Press key={k + i} onPress={() => onNav(k)} style={[s.tile, { borderColor: c + '66', width: '23.5%', flex: undefined }]}>
@@ -124,9 +124,9 @@ export default function Hub({ onBack, onRoom, onNav, toast }: Props) {
       </View>
 
       {/* create / join */}
-      <View style={{ flexDirection: 'row-reverse', paddingHorizontal: S.l, marginTop: S.m, alignItems: 'flex-start' }}>
+      <View style={{ flexDirection: rowDir(), paddingHorizontal: S.l, marginTop: S.m, alignItems: 'flex-start' }}>
         <Btn label="ساخت اتاق" small onPress={() => setSheet(true)} colors={G.green} style={{ width: 128, marginLeft: S.s }} />
-        <View style={{ flex: 1, flexDirection: 'row-reverse' }}>
+        <View style={{ flex: 1, flexDirection: rowDir() }}>
           <Field value={code} onChangeText={v => setCode(v.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 6))} placeholder="کد ۶ رقمی" autoCapitalize="characters"
             maxLength={6} style={{ height: 44, textAlign: 'center', letterSpacing: 2, fontFamily: F.head }} onSubmitEditing={joinCode} returnKeyType="go" />
         </View>
@@ -134,7 +134,7 @@ export default function Hub({ onBack, onRoom, onNav, toast }: Props) {
       </View>
 
       <View style={{ paddingHorizontal: S.l, marginTop: S.s, marginBottom: S.s }}>
-        <View style={{ flexDirection: 'row-reverse', alignItems: 'center', marginBottom: S.s }}>
+        <View style={{ flexDirection: rowDir(), alignItems: 'center', marginBottom: S.s }}>
           <T s="اتاق‌های باز" style={{ fontFamily: F.bold, fontSize: TS.h }} />
           <View style={{ flex: 1 }} />
           <T s={rows ? `${fa(data.length)} اتاق` : ''} style={{ fontSize: TS.cap, color: C.dim }} />
@@ -173,12 +173,12 @@ const RoomRow = memo(function RoomRow({ r, busy, onJoin }: { r: RoomListRow; bus
   return (
     <View style={{ paddingHorizontal: S.l, marginBottom: S.s }}>
       <Panel style={{ padding: S.m }} accent="transparent">
-        <View style={{ flexDirection: 'row-reverse', alignItems: 'center' }}>
+        <View style={{ flexDirection: rowDir(), alignItems: 'center' }}>
           <Avatar avatar={r.host_avatar} url={r.host_avatar_url} size={44} ring={playing ? C.red : C.cyan} />
-          <View style={{ flex: 1, marginRight: S.s, alignItems: 'flex-end' }}>
+          <View style={{ flex: 1, marginRight: S.s, alignItems: startAlign() }}>
             <T s={r.name} n={1} style={{ fontFamily: F.bold, fontSize: TS.body }} />
             <T s={`${r.host_name} · سطح ${fa(r.host_level)} · ${ruleLabel(r.settings)}`} n={1} style={{ fontSize: TS.cap, color: C.dim, marginTop: 2 }} />
-            <View style={{ flexDirection: 'row-reverse', marginTop: S.xs }}>
+            <View style={{ flexDirection: rowDir(), marginTop: S.xs }}>
               <Badge label={r.mode.toUpperCase()} color={C.sky} />
               <Badge label={kl} color={kc} />
               {playing ? <Badge label="زنده" color={C.red} live /> : <Badge label="در انتظار" color={C.green} />}
@@ -189,7 +189,7 @@ const RoomRow = memo(function RoomRow({ r, busy, onJoin }: { r: RoomListRow; bus
             <T s={`👁 ${fa(r.spectators)}`} style={{ fontSize: TS.tiny, color: C.dim }} />
           </View>
         </View>
-        <View style={{ flexDirection: 'row-reverse', marginTop: S.s }}>
+        <View style={{ flexDirection: rowDir(), marginTop: S.s }}>
           {!playing && !full ? <Btn label={busy === 'j' + r.id ? '…' : 'ورود'} small onPress={() => onJoin(r.id, false)} disabled={!!busy} style={{ flex: 1, marginLeft: S.s }} /> : null}
           <Btn label={busy === 'w' + r.id ? '…' : 'تماشا'} small onPress={() => onJoin(r.id, true)} disabled={!!busy} colors={G.dark} style={{ flex: 1 }} />
         </View>
@@ -210,7 +210,7 @@ function CreateRoom({ onCreate, busy }: { onCreate: (a: any) => void; busy: bool
   const [talk, setTalk] = useState(false);
   const row = (label: string, sub: string, v: boolean, set: (b: boolean) => void) => (
     <View style={s.optRow}>
-      <View style={{ flex: 1, alignItems: 'flex-end', marginLeft: S.m }}>
+      <View style={{ flex: 1, alignItems: startAlign(), marginLeft: S.m }}>
         <T s={label} style={{ fontFamily: F.bold, fontSize: TS.body }} />
         <T s={sub} style={{ fontSize: TS.cap, color: C.dim }} />
       </View>
