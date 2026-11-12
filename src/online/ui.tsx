@@ -7,7 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TEAM_IMG, UI2 } from '../game/assets';
 import { TEAMS, Team } from '../game/data';
-import { teamKey } from '../game/util';
+import { teamById, teamKey } from '../game/util';
 import { Btn, Img, Panel, Press, T } from '../ui/kit';
 import { C, F, G, faNum } from '../ui/theme';
 import type { League } from '../net/supabase';
@@ -20,8 +20,8 @@ import { buzz } from '../sound';
 export const S = { xs: 4, s: 8, m: 12, l: 16, xl: 24 };
 export const TS = { title: 20, h: 16, body: 14, small: 12, cap: 11, tiny: 10 };
 
-export const teamOfAvatar = (key?: string | null): Team => TEAMS.find(t => t.id === key || teamKey(t) === key) || TEAMS[0];
-export const discImg = (key?: string | null) => TEAM_IMG[teamKey(teamOfAvatar(key))] || TEAM_IMG.club00;
+export const teamOfAvatar = (key?: string | null): Team => TEAMS.find(t => t.id === key || teamKey(t) === key) || teamById(key);
+export const discImg = (key?: string | null) => TEAM_IMG[teamKey(teamOfAvatar(key))] || TEAM_IMG.real_madrid;
 
 export const Avatar = memo(function Avatar({ avatar, url, size = 40, ring = C.cyan, dim }: { avatar?: string | null; url?: string | null; size?: number; ring?: string; dim?: boolean }) {
   const src = url ? { uri: url } : discImg(avatar);

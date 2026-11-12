@@ -33,7 +33,7 @@ const col = (c: string, a = 1) => { const k = Skia.Color(c); return Float32Array
 const TEAM_GLOW = ['#36c8ff', '#ff3d6e'];
 const TEAM_HI = ['#c8f3ff', '#ffd0dc'];
 
-export type Images = { field: SkImage | null; goal: SkImage | null; ball: SkImage | null; t0: SkImage | null; t1: SkImage | null };
+export type Images = { field: SkImage | null; goal: SkImage | null; ball: SkImage | null; t0: SkImage | null; t1: SkImage | null; d0?: boolean; d1?: boolean };
 export type View = { W: number; H: number; s: number; ox: number; oy: number };
 
 export function computeView(e: Engine, W: number, H: number, top: number, bottom: number): View {
@@ -82,7 +82,7 @@ export function staticLayer(e: Engine, v: View, im: Images): SkPicture {
 }
 
 // ---- pre-rendered sprites (built once per team logo; per-frame cost = 2-3 drawImage calls) ----
-const SPR = 192, sprCache = new Map<any, { disc: SkImage; gloss: SkImage }>();
+const SPR = 192, sprCache = new Map<any, { disc: SkImage; gloss: SkImage; deluxe?: boolean }>();
 let shadowSpr: SkImage | null = null;
 function makeImg(w: number, h: number, draw: (c: SkCanvas) => void): SkImage | null {
   // CPU raster surface: built once, no extra GPU/WebGL context, safe to draw from any thread
@@ -92,9 +92,15 @@ function makeImg(w: number, h: number, draw: (c: SkCanvas) => void): SkImage | n
   const img = surf.makeImageSnapshot(); const ni = (img as any).makeNonTextureImage?.();
   return ni || img;
 }
-function sprites(team: 0 | 1, logo: SkImage | null) {
+function sprites(team: 0 | 1, logo: SkImage | null, deluxe = false) {
   const key = logo || team; const hit = sprCache.get(key); if (hit) return hit;
   const R = SPR / 2, r = R - 2;
+  if (deluxe && logo) {
+    // Deluxe art (crown + laurel wings + NX plate) is not round: keep its silhouette, fit it in the sprite
+    const k = Math.min(SPR / logo.width(), SPR / logo.height()), w = logo.width() * k, h = logo.height() * k;
+    const disc = makeImg(SPR, SPR, c => c.drawImageRectOptions(logo, Skia.XYWHRect(0, 0, logo.width(), logo.height()), Skia.XYWHRect((SPR - w) / 2, (SPR - h) / 2, w, h), FilterMode.Linear, MipmapMode.Linear, null))!;
+    const v = { disc, gloss: null as any as SkImage, deluxe: true }; sprCache.set(key, v); return v;
+  }
   const disc = makeImg(SPR, SPR, c => {
     // v3: no solid red/blue team disc underneath any more: the metallic art fills the piece and the
     // team reads from the neon ring drawn around it (see ringSprite / drawPiece)
@@ -113,7 +119,7 @@ function sprites(team: 0 | 1, logo: SkImage | null) {
     const sp = P(); sp.setStyle(PaintStyle.Stroke); sp.setStrokeCap(StrokeCap.Round); sp.setStrokeWidth(5); sp.setColor(col('#ffffff', .6));
     c.drawArc(Skia.XYWHRect(R - r * .95, R - r * .95, r * 1.9, r * 1.9), 200, 70, false, sp);
   })!;
-  const v = { disc, gloss }; sprCache.set(key, v); return v;
+  const v = { disc, gloss, deluxe: false }; sprCache.set(key, v); return v;
 }
 function shadowSprite() {
   if (shadowSpr) return shadowSpr;
@@ -143,7 +149,7 @@ function ringSprite(team: 0 | 1) {
 const ringPaint = (() => { const p = P(); p.setBlendMode(BlendMode.Plus); return p; })();
 const arcPaint = (() => { const p = P(); p.setStyle(PaintStyle.Stroke); p.setStrokeCap(StrokeCap.Round); p.setBlendMode(BlendMode.Plus); return p; })();
 
-function drawPiece(c: SkCanvas, e: Engine, b: Body, x: number, y: number, img: SkImage | null, t: number, active: boolean, dark: boolean, held: boolean) {
+function drawPiece(c: SkCanvas, e: Engine, b: Body, x: number, y: number, img: SkImage | null, t: number, active: boolean, dark: boolean, held: boolean, deluxe = false) {
   const team = b.team as 0 | 1, sc = 1 + b.sq * .07, r = b.r * sc;
   drawShadowFast(c, x, y, r, .5);
   if (b.tr.length > 1) {
@@ -164,7 +170,14 @@ function drawPiece(c: SkCanvas, e: Engine, b: Body, x: number, y: number, img: S
     const box = Skia.XYWHRect(x - rad, y - rad, rad * 2, rad * 2);
     for (let i = 0; i < 3; i++) c.drawArc(box, rot + i * 120, held ? 62 : 38, false, arcPaint);
   }
-  const s = sprites(team, img);
+  const s = sprites(team, img, deluxe);
+  if (s.deluxe) {
+    // round body ≈ 77% of the sprite: the crown and NX plate overhang the physical circle; no spin (keeps the crown upright)
+    const R2 = r / .77;
+    c.drawImageRectOptions(s.disc, Skia.XYWHRect(0, 0, SPR, SPR), Skia.XYWHRect(x - R2, y - R2, 2 * R2, 2 * R2), FilterMode.Linear, MipmapMode.None, sprPaint);
+    if (dark) { const dk = paints.dark; dk.setColor(col('#060818', .3)); c.drawCircle(x, y, r * .99, dk); }
+    return;
+  }
   c.save(); c.translate(x, y); c.rotate(b.ang * 57.2958, 0, 0);
   c.drawImageRectOptions(s.disc, Skia.XYWHRect(0, 0, SPR, SPR), Skia.XYWHRect(-r, -r, 2 * r, 2 * r), FilterMode.Linear, MipmapMode.None, sprPaint);
   c.restore();
@@ -300,7 +313,7 @@ export function frame(e: Engine, v: View, im: Images, bg: SkPicture | null, ball
     if (hq) drawGoalFx(c, e, t);
     const pos = (b: Body) => [b.px + (b.x - b.px) * al + b.vox, b.py + (b.y - b.py) * al + b.voy];
     const aimTeam = e.phase === 'aim' ? e.turn : -1;
-    for (const b of e.bodies) if (b !== e.ball) { const [x, y] = pos(b); drawPiece(c, e, b, x, y, b.team === 0 ? im.t0 : im.t1, t, b.team === aimTeam && !e.drag && !e.isAiTurn(), e.phase === 'aim' && b.team !== e.turn, !!e.drag && e.drag.b === b); }
+    for (const b of e.bodies) if (b !== e.ball) { const [x, y] = pos(b); drawPiece(c, e, b, x, y, b.team === 0 ? im.t0 : im.t1, t, b.team === aimTeam && !e.drag && !e.isAiTurn(), e.phase === 'aim' && b.team !== e.turn, !!e.drag && e.drag.b === b, b.team === 0 ? !!im.d0 : !!im.d1); }
     drawTrail(c, e, ballIdx);
     { const [x, y] = pos(e.ball); if (hq) drawBallHalo(c, e, x, y, ballIdx); drawBall(c, e.ball, x, y, im.ball, v.s); }
     drawAim(c, e, t);

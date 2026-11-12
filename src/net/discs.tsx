@@ -11,7 +11,14 @@ const KEY = 'nexora.discs.v1';
 let catalog: Record<string, Disc> = {};
 // fallback stats (deterministic) until the catalog has loaded once
 const fallback = (id: string): DiscStats => { const m = DISC_META[id] || DISC_META.club0; return { power: m[1], accuracy: m[2] }; };
-export const discStats = (id?: string | null): DiscStats => { const d = id ? catalog[id] : null; return d ? { power: d.power, accuracy: d.accuracy } : fallback(id || 'club0'); };
+// v3: stats always come from the bundled table (the Deluxe tier must out-rate every standard disc,
+// and online matches are host-authoritative so both sides already use the host's numbers)
+export const discStats = (id?: string | null): DiscStats => fallback(id && DISC_META[id] ? id : 'club0');
+// a disc the server catalog does not know yet (v3 additions until docs/discs_v3_catalog.sql is applied)
+// is unlocked locally with coins instead of server gems
+export const onServer = (id: string) => !!catalog[id];
+export const COIN_RATE = 15;
+export const localCoinPrice = (id: string) => (DISC_META[id]?.[0] ?? 0) * COIN_RATE;
 export const discPrice = (id: string) => catalog[id]?.price_gems ?? 0;
 export const isFreeDisc = (id: string) => (catalog[id] ? catalog[id].price_gems === 0 : (DISC_META[id]?.[0] ?? 1) === 0);
 

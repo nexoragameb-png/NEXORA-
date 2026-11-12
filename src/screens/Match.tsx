@@ -23,7 +23,7 @@ export default function Match({ cfg, teams, names, onFinish, onQuit, fx = true }
   const f = FIELDS[cfg.field];
   const im = {
     field: useImage(FIELD_IMG[f.id]), goal: useImage(GOAL_IMG[f.gs]), ball: useImage(BALL_IMG['b' + cfg.ball]),
-    t0: useImage(TEAM_IMG[teamKey(teams[0])]), t1: useImage(TEAM_IMG[teamKey(teams[1])]),
+    t0: useImage(TEAM_IMG[teamKey(teams[0])]), t1: useImage(TEAM_IMG[teamKey(teams[1])]), d0: teams[0].tier === 'dlx', d1: teams[1].tier === 'dlx',
   };
   const view = useMemo<GView>(() => computeView(eng, W, H, ins.top + 86, ins.bottom + 22), [W, H, ins.top, ins.bottom]);
   const bg = useMemo(() => (im.field ? staticLayer(eng, view, im) : null), [im.field, view]);
