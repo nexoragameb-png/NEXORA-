@@ -97,7 +97,7 @@ export default function OnlineMatch({ link, matchId, onFinish, onExit, toast, fx
   const f = FIELDS[cfg.field];
   const im = {
     field: useImage(FIELD_IMG[f.id]), goal: useImage(GOAL_IMG[f.gs]), ball: useImage(BALL_IMG['b' + cfg.ball]),
-    t0: useImage(TEAM_IMG[teamKey(start.teams[0])]), t1: useImage(TEAM_IMG[teamKey(start.teams[1])]),
+    t0: useImage(TEAM_IMG[teamKey(start.teams[0])]), t1: useImage(TEAM_IMG[teamKey(start.teams[1])]), d0: start.teams[0].tier === 'dlx', d1: start.teams[1].tier === 'dlx',
   };
   const topM = ins.top + 92, botM = ins.bottom + 72;
   const view = useMemo<GView>(() => computeView(eng, W, H, flipped ? botM : topM, flipped ? topM : botM), [W, H, topM, botM]);

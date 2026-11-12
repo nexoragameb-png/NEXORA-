@@ -3,7 +3,7 @@ import React, { memo, useCallback, useEffect, useState } from 'react';
 import { FlatList, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { UI, UI2 } from '../game/assets';
-import { Bar, Btn, Img, Panel, Press, T } from '../ui/kit';
+import { Bar, Btn, Img, Panel, Press, T, rowDir, startAlign } from '../ui/kit';
 import { C, F, G, fa } from '../ui/theme';
 import { buzz, sfx } from '../sound';
 import { useAuth } from '../net/auth';
@@ -62,7 +62,7 @@ export const LbItem = memo(function LbItem({ r, mine, onPress, metric, metricLab
       <View style={[st.row, mine && { borderColor: C.cyan, backgroundColor: 'rgba(79,227,255,.12)' }]}>
         <View style={[st.rank, medal ? { backgroundColor: medal + '33', borderColor: medal } : null]}><T s={fa(r.rank)} style={{ fontFamily: F.title, fontSize: 13, color: medal || C.dim }} /></View>
         <Avatar avatar={r.avatar} size={40} ring={medal || C.line} />
-        <View style={{ flex: 1, marginRight: S.s, alignItems: 'flex-end' }}>
+        <View style={{ flex: 1, marginRight: S.s, alignItems: startAlign() }}>
           <T s={r.username + (mine ? ' (تو)' : '')} n={1} style={{ fontFamily: F.bold, fontSize: TS.body }} />
           <T s={`سطح ${fa(r.level)} · ${fa(r.wins)} برد`} style={{ fontSize: TS.tiny, color: C.dim }} />
         </View>
@@ -104,9 +104,9 @@ function Leagues({ toast }: { toast: (m: string, k?: string) => void }) {
   return (
     <ScrollView contentContainerStyle={{ paddingHorizontal: S.l, paddingBottom: ins.bottom + S.xl }} showsVerticalScrollIndicator={false}>
       <Panel style={{ padding: S.m }} accent={C.violet} glow>
-        <View style={{ flexDirection: 'row-reverse', alignItems: 'center' }}>
+        <View style={{ flexDirection: rowDir(), alignItems: 'center' }}>
           <Img src={UI2.c_calendar} style={{ width: 48, height: 48 }} />
-          <View style={{ flex: 1, marginRight: S.m, alignItems: 'flex-end' }}>
+          <View style={{ flex: 1, marginRight: S.m, alignItems: startAlign() }}>
             <T s={season?.name || 'فصل جاری'} style={{ fontFamily: F.title, fontSize: TS.h }} />
             <T s={season ? `${fa(d)} روز و ${fa(h)} ساعت تا پایان فصل` : '…'} style={{ fontSize: TS.cap, color: C.dim, marginTop: 2 }} />
           </View>
@@ -116,7 +116,7 @@ function Leagues({ toast }: { toast: (m: string, k?: string) => void }) {
       </Panel>
       {profile && cur ? (
         <Panel style={{ padding: S.m, marginTop: S.m }} accent={cur.color}>
-          <View style={{ flexDirection: 'row-reverse', alignItems: 'center' }}>
+          <View style={{ flexDirection: rowDir(), alignItems: 'center' }}>
             <Img src={(UI as any)[LEAGUE_IMG[cur.id]]} style={{ width: 56, height: 56 }} />
             <View style={{ flex: 1, marginRight: S.m }}>
               <T s={`لیگ ${cur.name_fa}`} style={{ fontFamily: F.title, fontSize: TS.h, textAlign: 'right', color: cur.color }} />
@@ -132,7 +132,7 @@ function Leagues({ toast }: { toast: (m: string, k?: string) => void }) {
         return (
           <View key={l.id} style={[st.row, { height: 68 }, on && { borderColor: l.color, backgroundColor: l.color + '1f' }]}>
             <Img src={(UI as any)[LEAGUE_IMG[l.id]]} style={{ width: 44, height: 44, opacity: reached ? 1 : .4 }} />
-            <View style={{ flex: 1, marginRight: S.s, alignItems: 'flex-end' }}>
+            <View style={{ flex: 1, marginRight: S.s, alignItems: startAlign() }}>
               <T s={l.name_fa} style={{ fontFamily: F.bold, fontSize: TS.body, color: reached ? l.color : C.dim }} />
               <T s={`از ${fa(l.min_rating)} امتیاز`} style={{ fontSize: TS.tiny, color: C.dim }} />
             </View>

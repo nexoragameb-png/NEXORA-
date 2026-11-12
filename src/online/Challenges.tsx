@@ -4,7 +4,7 @@ import { RefreshControl, ScrollView, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { UI2 } from '../game/assets';
-import { Bar, Btn, Img, Panel, T } from '../ui/kit';
+import { Bar, Btn, Img, Panel, T, rowDir, startAlign } from '../ui/kit';
 import { C, F, G, fa } from '../ui/theme';
 import { buzz, sfx } from '../sound';
 import { errFa, rpc, supabase } from '../net/supabase';
@@ -62,9 +62,9 @@ export default function Challenges({ onBack, toast }: { onBack: () => void; toas
       <Header title="چالش‌های روزانه" en="DAILY CHALLENGES" accent={C.green} onBack={onBack} />
       <ScrollView contentContainerStyle={{ paddingTop: ins.top + 76, paddingHorizontal: S.l, paddingBottom: ins.bottom + S.xl }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={async () => { setRefreshing(true); await load(); setRefreshing(false); }} tintColor={C.cyan} progressViewOffset={ins.top + 70} />}>
-        <Panel style={{ padding: S.m, flexDirection: 'row-reverse', alignItems: 'center' }} accent={C.green}>
+        <Panel style={{ padding: S.m, flexDirection: rowDir(), alignItems: 'center' }} accent={C.green}>
           <Img src={UI2.c_calendar} style={{ width: 48, height: 48 }} />
-          <View style={{ flex: 1, marginRight: S.m, alignItems: 'flex-end' }}>
+          <View style={{ flex: 1, marginRight: S.m, alignItems: startAlign() }}>
             <T s="چالش‌های امروز" style={{ fontFamily: F.title, fontSize: TS.h }} />
             <T s={`تازه‌سازی تا ${fa(h)}:${String(m).padStart(2, '0').replace(/\d/g, d => '۰۱۲۳۴۵۶۷۸۹'[+d])}:${String(s).padStart(2, '0').replace(/\d/g, d => '۰۱۲۳۴۵۶۷۸۹'[+d])}`} style={{ fontSize: TS.cap, color: C.dim, marginTop: 2 }} />
           </View>
@@ -85,7 +85,7 @@ export function ChallengeCard({ c, onClaim, compact }: { c: Challenge; i?: numbe
   const claim = () => { sc.value = withSequence(withTiming(1.06, { duration: 120 }), withSpring(1, { damping: 8 })); onClaim(); };
   return (
     <Animated.View style={[{ marginBottom: S.s }, a]}>
-      <Panel style={{ padding: compact ? S.s : S.m, flexDirection: 'row-reverse', alignItems: 'center', opacity: c.claimed ? .6 : 1 }} accent={done && !c.claimed ? C.green : 'transparent'} glow={done && !c.claimed}>
+      <Panel style={{ padding: compact ? S.s : S.m, flexDirection: rowDir(), alignItems: 'center', opacity: c.claimed ? .6 : 1 }} accent={done && !c.claimed ? C.green : 'transparent'} glow={done && !c.claimed}>
         <Img src={c.claimed ? UI2.x_medal : done ? UI2.x_star : UI2.x_ball} style={{ width: compact ? 36 : 44, height: compact ? 36 : 44 }} />
         <View style={{ flex: 1, marginHorizontal: S.s }}>
           <T s={c.title_fa} n={2} style={{ fontFamily: F.bold, fontSize: compact ? TS.small : TS.body, textAlign: 'right' }} />

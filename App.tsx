@@ -8,7 +8,7 @@ import { Exo2_600SemiBold, Exo2_800ExtraBold } from '@expo-google-fonts/exo-2';
 import { Vazirmatn_500Medium, Vazirmatn_800ExtraBold } from '@expo-google-fonts/vazirmatn';
 import { StoreProvider, level, useStore } from './src/store';
 import { C, F, G, fa } from './src/ui/theme';
-import { Btn, Img, T } from './src/ui/kit';
+import { Btn, Img, T, rowDir, startAlign } from './src/ui/kit';
 import { UI2 } from './src/game/assets';
 import { TEAMS } from './src/game/data';
 import { CHEST_EVERY, ChestPrize, DAILY, grant, rollChest } from './src/game/meta';
@@ -32,12 +32,17 @@ import { NavCtx, OnlineEntry } from './src/nav';
 import OnlineRoot from './src/online/OnlineRoot';
 import { RecoveryModal } from './src/screens/Account';
 import AuthScreen from './src/screens/AuthScreen';
+import { deviceLang, setLang } from './src/i18n';
 
 type Route = 'tabs' | 'match' | 'result' | 'online';
 const DAY = 86400000;
+const INTRO = { done: false }; // survives the remount caused by a language switch
 const MULT: Record<string, number> = { quick: 1, cup: 2, galaxy: 3, train: .3, local: 0 };
 
 function Shell() {
+  // UI language: saved choice, otherwise the device language. Changing it remounts the tree (key below)
+  // so every screen re-renders with the new strings and RTL/LTR layout.
+  const { p: prof } = useStore(); const lang = prof.lang || deviceLang(); setLang(lang);
   const [toastM, setToastM] = useState<{ m: string; k: string; id: number } | null>(null);
   const tA = useSharedValue(0);
   const toast = useCallback((m: string, k = 'info') => {
@@ -49,7 +54,7 @@ function Shell() {
   return (
     <AuthProvider toast={toast}>
       <DiscProvider>
-        <ShellInner toast={toast} />
+        <ShellInner key={lang} toast={toast} />
         {toastM ? (
           <Animated.View pointerEvents="none" style={[st.toast, { top: ins.top + 64 }, toastSt]}>
             <View style={[st.toastIn, { borderColor: toastM.k === 'err' ? C.red : toastM.k === 'ok' ? C.green : C.cyan }]}>
@@ -70,7 +75,8 @@ function ShellInner({ toast }: { toast: (m: string, k?: string) => void }) {
   const { p, set, ready } = useStore();
   const [route, setRoute] = useState<Route>('tabs');
   const [tab, setTab] = useState<Tab>('home');
-  const [intro, setIntro] = useState(true);
+  const [intro, setIntro0] = useState(!INTRO.done);
+  const setIntro = (v: boolean) => { if (!v) INTRO.done = true; else INTRO.done = false; setIntro0(v); };
   const [authOpen, setAuthOpen] = useState<null | 'up' | 'in'>(null);
   const [sheet, setSheet] = useState<null | { k: 'setup'; mode: Mode } | { k: 'settings' }>(null);
   const [modal, setModal] = useState<null | { k: 'daily' } | { k: 'chest'; prize: ChestPrize; premium: boolean }>(null);
@@ -178,7 +184,7 @@ function ShellInner({ toast }: { toast: (m: string, k?: string) => void }) {
       <StatusBar style="light" hidden={route === 'match'} />
       {route === 'tabs' ? (
         <View style={{ flex: 1 }}>
-          <Space theme={tab === 'home' ? 'stadium' : tab === 'play' || tab === 'team' ? 'stadium2' : 'portal'} dim={tab === 'home' ? 0 : .08} stars={hq} />
+          {tab === 'home' ? null : <Space theme={tab === 'play' || tab === 'team' ? 'stadium' : 'portal'} dim={.06} stars={hq} />}
           <Animated.View key={tab} entering={FadeIn.duration(240)} exiting={FadeOut.duration(120)} style={{ flex: 1 }}>
             {tab === 'home' ? <Home top={top} bottom={bottom} onOnline={openOnline} onMode={openMode} onTab={goTab} onDaily={() => setModal({ k: 'daily' })} onSettings={() => setSheet({ k: 'settings' })} onChest={() => openChest(false)} dailyReady={dailyReady} chestReady={chestReady} />
               : tab === 'play' ? <Play top={top} bottom={bottom} onMode={openMode} onOnline={openOnline} />
@@ -187,7 +193,7 @@ function ShellInner({ toast }: { toast: (m: string, k?: string) => void }) {
                     : <Profile top={top} bottom={bottom} toast={toast} />}
           </Animated.View>
           <Hud onProfile={() => setTab('profile')} onSettings={() => setSheet({ k: 'settings' })} onDaily={() => setModal({ k: 'daily' })} dailyReady={dailyReady} onShop={() => setTab('shop')} />
-          <TabBar tab={tab} onTab={goTab} badge={{ shop: chestReady, profile: false }} />
+          <TabBar tab={tab} onTab={goTab} badge={{ shop: chestReady, profile: false }} onSettings={() => setSheet({ k: 'settings' })} />
         </View>
       ) : route === 'online' ? (
         <OnlineRoot entry={onlineEntry} toast={toast} fx={hq} onExit={() => transition(() => { setRoute('tabs'); })} />
@@ -237,7 +243,7 @@ function DailyCard({ ready, streak, lastDaily, onClaim, onClose }: { ready: bool
       <Img src={UI2.c_calendar} style={{ width: 96, height: 96 }} />
       <T s="جایزه‌ی روزانه" style={{ fontFamily: F.title, fontSize: 21, marginTop: 4 }} />
       <T s="هر روز سر بزن، جایزه‌ها بزرگ‌تر می‌شن" style={{ color: C.dim, fontSize: 12, marginTop: 2 }} />
-      <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', justifyContent: 'center', marginTop: 14 }}>
+      <View style={{ flexDirection: rowDir(), flexWrap: 'wrap', justifyContent: 'center', marginTop: 14 }}>
         {DAILY.map((d, i) => {
           const day = i + 1, got = ready ? day < next : day <= next, cur = ready && day === next;
           return (

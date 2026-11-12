@@ -1,217 +1,218 @@
-import React, { memo, useEffect } from 'react';
-import { ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
-import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
-import { LinearGradient } from 'expo-linear-gradient';
-import { BALL_IMG, FIELD_THUMB, TEAM_IMG, UI, UI2 } from '../game/assets';
-import { BALL_NAMES, FIELDS, FORMS } from '../game/data';
-import { ACHS } from '../game/meta';
-import { teamById, teamKey } from '../game/util';
-import { LEAGUE_FA, league, useStore } from '../store';
-import { Bar, Btn, Enter, Float, Img, Panel, Press, Pulse, T, Title } from '../ui/kit';
-import Oracle from '../ui/Oracle';
-import { C, F, G, fa } from '../ui/theme';
+// v3 Home: a first-person stadium hub. Drag to look around, tap a gate (or ENTER) to open it.
+// One Skia <Canvas> renders the whole procedural world on the UI thread (see hub/scene.ts);
+// React only renders the light overlay (labels, focus card, reward shortcuts) and re-renders
+// when the focused gate changes — never per frame.
+import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { PanResponder, StyleSheet, View, useWindowDimensions } from 'react-native';
+import Animated, { FadeIn, FadeInDown, cancelAnimation, runOnJS, useAnimatedReaction, useAnimatedStyle, useDerivedValue, useFrameCallback, useSharedValue, withSpring } from 'react-native-reanimated';
+import { Canvas, Picture, Skia, SkPath } from '@shopify/react-native-skia';
+import { useStore, league, LEAGUE_FA } from '../store';
+import { Btn, Press, T, rowDir } from '../ui/kit';
+import { C, F, G, N, fa } from '../ui/theme';
+import { Icon } from '../ui/vec/Icon';
+import { Chamfer, LeagueEmblem, Robot } from '../ui/vec/Art';
+import { GLYPHS } from '../ui/vec/glyphs';
+import { useSky } from '../ui/daytime';
 import { MODES, Mode } from './Setup';
 import type { OnlineEntry } from '../nav';
-import OnlineCard from './OnlineCard';
-
-const MEDAL = ['medal_bronze', 'medal_silver', 'medal_gold', 'medal_epic', 'shield_epic', 'shield_crown'];
+import { DEG, GateDef, SceneCfg, drawScene, gateRect } from './hub/scene';
+import { tr, isRTL } from '../i18n';
+import { buzz, sfx } from '../sound';
 
 type Props = { top: number; bottom: number; onOnline: (e?: OnlineEntry) => void; onMode: (m: Mode) => void; onTab: (t: 'team' | 'shop' | 'play' | 'profile') => void; onDaily: () => void; onSettings: () => void; onChest: () => void; dailyReady: boolean; chestReady: boolean };
+type Gate = GateDef & { icon: string; fa: string; en: string; say: [string, string]; act: () => void };
+const LIMIT = 112 * DEG;
 
-function Home({ top, bottom, onOnline, onMode, onTab, onDaily, onSettings, onChest, dailyReady, chestReady }: Props) {
-  const { width: W } = useWindowDimensions();
-  const { p } = useStore(); const lg = league(p.trophies); const me = teamById(p.team);
-  const heroW = Math.min(W * .62, 300);
-  const pending = ACHS.filter(a => !p.claimedAch.includes(a.id)).slice(0, 3);
-  const plates: { img: any; label: string; sub: string; on: () => void; dot?: boolean }[] = [
-    { img: UI2.btn_cup, label: 'جام نکسورا', sub: 'NEXORA CUP', on: () => onMode(MODES[1]) },
-    { img: UI2.btn_team, label: 'تیم من', sub: 'SQUAD', on: () => onTab('team') },
-    { img: UI2.btn_daily, label: 'جایزه روزانه', sub: 'DAILY', on: onDaily, dot: dailyReady },
-    { img: UI2.btn_chest, label: 'صندوقچه', sub: 'CHESTS', on: onChest, dot: chestReady },
-    { img: UI2.btn_shop, label: 'فروشگاه', sub: 'MARKET', on: () => onTab('shop') },
-    { img: UI2.btn_settings, label: 'تنظیمات', sub: 'SYSTEM', on: onSettings },
-  ];
-  const plateW = (W - 16 * 2 - 10) / 2;
+function Home({ top, bottom, onOnline, onMode, onTab, onDaily, onChest, dailyReady, chestReady }: Props) {
+  const { width: W, height: H } = useWindowDimensions();
+  const { p } = useStore(); const lg = league(p.trophies); const sky = useSky();
+  const hq = p.quality === 'high';
+
+  const gates: Gate[] = useMemo(() => [
+    { key: 'quick', ang: 0, color: N.cyan, main: true, icon: 'play', fa: 'بازی سریع', en: 'QUICK MATCH', say: ['یه مسابقه‌ی فوری با ربات؛ سکه و جام بگیر!', 'Instant match vs the bot — earn coins & trophies!'], act: () => onMode(MODES[0]) },
+    { key: 'online', ang: 28 * DEG, color: '#ff4fd8', icon: 'globe', fa: 'آنلاین', en: 'ONLINE', say: ['بازیکن‌های واقعی، دوئل، تورنمنت و جام جهانی.', 'Real players: duels, tournaments, World Cup.'], act: () => onOnline('hub') },
+    { key: 'cup', ang: -28 * DEG, color: C.gold, icon: 'trophy', fa: 'جام نکسورا', en: 'NEXORA CUP', say: ['سه حریف تا فینال؛ قهرمان ۲۰ الماس می‌گیره.', 'Three rounds to the final — champions win 20 gems.'], act: () => onMode(MODES[1]) },
+    { key: 'galaxy', ang: 56 * DEG, color: '#a43bff', icon: 'planet', fa: 'چالش کهکشانی', en: 'GALAXY CHALLENGE', say: ['دو دقیقه مقابل ربات افسانه‌ای، جایزه‌ی سه برابر.', 'Two minutes vs the legendary bot — triple rewards.'], act: () => onMode(MODES[2]) },
+    { key: 'local', ang: -56 * DEG, color: C.green, icon: 'duo', fa: 'دو نفره', en: 'LOCAL 2P', say: ['با دوستت روی همین گوشی بازی کن.', 'Play a friend on this phone.'], act: () => onMode(MODES[3]) },
+    { key: 'train', ang: 84 * DEG, color: '#7fc8ff', icon: 'target', fa: 'تمرین', en: 'TRAINING', say: ['بدون تایمر، برای گرم کردن دست.', 'No timer — warm up your flicks.'], act: () => onMode(MODES[4]) },
+    { key: 'team', ang: -84 * DEG, color: '#27e6ff', icon: 'disc', fa: 'دیسک‌ها', en: 'DISCS', say: ['دیسک، توپ، زمین و ترکیبت رو انتخاب کن.', 'Pick your disc, ball, pitch and formation.'], act: () => onTab('team') },
+    { key: 'shop', ang: 112 * DEG, color: '#ff7ae0', icon: 'cart', fa: 'فروشگاه', en: 'SHOP', say: ['صندوقچه‌ها، دیسک‌های دلوکس و بسته‌ها.', 'Chests, Deluxe discs and packs.'], act: () => onTab('shop') },
+    { key: 'profile', ang: -112 * DEG, color: '#9fb3ff', icon: 'user', fa: 'پروفایل', en: 'PROFILE', say: ['آمار، لیگ و مأموریت‌هات اینجاست.', 'Your stats, league and missions.'], act: () => onTab('profile') },
+  ], [onMode, onOnline, onTab]);
+
+  const cfg: SceneCfg = useMemo(() => ({ W, H, f: Math.min(W * .82, H * .55), cy: H * .5, camY: 1.7, R: 6.6, gw: 2.2, gh: 3.3, hq }), [W, H, hq]);
+  const icons = useMemo(() => gates.map(g => {
+    const gl = GLYPHS[g.icon]; const out: SkPath[] = [];
+    const b = gl.body?.length ? Skia.Path.MakeFromSVGString(gl.body.join(' ')) : (gl.lines ? Skia.Path.MakeFromSVGString(gl.lines.join(' ')) : null);
+    if (b) out.push(b); const l = gl.body?.length && gl.lines ? Skia.Path.MakeFromSVGString(gl.lines.join(' ')) : null; if (l) out.push(l);
+    return out;
+  }), [gates]);
+  const defs: GateDef[] = useMemo(() => gates.map(g => ({ key: g.key, ang: g.ang, color: g.color, main: g.main })), [gates]);
+  const angs = useMemo(() => gates.map(g => g.ang), [gates]);
+
+  const yaw = useSharedValue(0), t = useSharedValue(0), focusSV = useSharedValue(0);
+  const [focus, setFocus] = useState(0);
+  useFrameCallback(f => { t.value = (f.timeSinceFirstFrame || 0) / 1000; });
+  useAnimatedReaction(() => {
+    let best = 0, bd = 1e9; for (let i = 0; i < angs.length; i++) { const d = Math.abs(angs[i] - yaw.value); if (d < bd) { bd = d; best = i; } }
+    return best;
+  }, (v, prev) => { focusSV.value = v; if (v !== prev) runOnJS(setFocus)(v); }, [angs]);
+  const pic = useDerivedValue(() => drawScene(cfg, yaw.value, t.value, sky, defs, icons, focusSV.value), [cfg, sky, defs, icons]);
+
+  const snapTo = useCallback((i: number) => { yaw.value = withSpring(angs[i], { damping: 18, stiffness: 120, mass: .9 }); }, [angs]);
+  const open = useCallback((i: number) => { sfx('ui'); buzz('medium'); snapTo(i); setTimeout(() => gates[i].act(), 160); }, [gates, snapTo]);
+  const st = useRef({ y0: 0, t0: 0 });
+  const pan = useMemo(() => PanResponder.create({
+    onStartShouldSetPanResponder: () => true,
+    onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 4,
+    onPanResponderGrant: () => { cancelAnimation(yaw); st.current = { y0: yaw.value, t0: Date.now() }; },
+    onPanResponderMove: (_, g) => {
+      let y = st.current.y0 - g.dx / cfg.f * 1.15;
+      if (y > LIMIT) y = LIMIT + (y - LIMIT) * .3; else if (y < -LIMIT) y = -LIMIT + (y + LIMIT) * .3;
+      yaw.value = y;
+    },
+    onPanResponderRelease: (e, g) => {
+      if (Math.abs(g.dx) < 8 && Math.abs(g.dy) < 8 && Date.now() - st.current.t0 < 400) {
+        const { locationX: x, locationY: y } = e.nativeEvent; let hit = -1, hz = 1e9;
+        for (let i = 0; i < angs.length; i++) { const r = gateRect(angs[i], yaw.value, cfg); if (r && x >= r[0] && x <= r[2] && y >= r[1] && y <= r[3] && r[4] < hz) { hz = r[4]; hit = i; } }
+        if (hit >= 0) open(hit); return;
+      }
+      const target = Math.max(-LIMIT, Math.min(LIMIT, yaw.value - g.vx * .32));
+      let best = 0, bd = 1e9; angs.forEach((a, i) => { const d = Math.abs(a - target); if (d < bd) { bd = d; best = i; } });
+      buzz('light'); snapTo(best);
+    },
+  }), [cfg, angs, open, snapTo]);
+
+  const g = gates[focus];
+  const cardBottom = bottom + 8;
   return (
-    <ScrollView contentContainerStyle={{ paddingTop: top, paddingBottom: bottom + 10 }} showsVerticalScrollIndicator={false}>
-      {/* hero */}
-      <View style={{ height: heroW * 1.02 + 40, alignItems: 'center', justifyContent: 'flex-end' }}>
-        <Pulse size={heroW * .7} color="rgba(79,140,255,.35)" style={{ top: heroW * .12 }} />
-        <Orbit size={heroW * 1.15} />
-        <Float amp={7} dur={3000}><Img src={UI2.hero} style={{ width: heroW, height: heroW }} /></Float>
-        <View style={{ position: 'absolute', left: 6, bottom: 10, zIndex: 5 }}>
-          <Oracle size={W * .28} dailyReady={dailyReady} chestReady={chestReady} />
+    <View style={StyleSheet.absoluteFill}>
+      <View style={StyleSheet.absoluteFill} {...pan.panHandlers}>
+        <Canvas style={StyleSheet.absoluteFill} pointerEvents="none"><Picture picture={pic} /></Canvas>
+        {gates.map((gt, i) => (gt.main ? null : <GateLabel key={gt.key} gate={gt} yaw={yaw} cfg={cfg} focused={i === focus} />))}
+        <ArenaScreen yaw={yaw} cfg={cfg} />
+      </View>
+
+      {/* top strip: league + reward shortcuts */}
+      <Animated.View entering={FadeIn.duration(400)} style={[s.strip, { top, flexDirection: rowDir() }]} pointerEvents="box-none">
+        <Press onPress={() => onTab('profile')} style={[s.league, { flexDirection: rowDir() }]}>
+          <LeagueEmblem tier={lg.idx} size={30} />
+          <View style={{ marginHorizontal: 6 }}>
+            <T s={tr(`لیگ ${LEAGUE_FA[lg.name]}`, `${lg.name} LEAGUE`)} n={1} style={{ fontFamily: F.bold, fontSize: 11 }} />
+            <View style={s.lgBar}><View style={[s.lgFill, { width: `${Math.max(4, Math.min(100, (p.trophies - lg.from) / (lg.to - lg.from) * 100))}%` }]} /></View>
+          </View>
+          <T s={fa(p.trophies)} style={{ fontFamily: F.head, fontSize: 11, color: C.gold }} />
+        </Press>
+        <View style={{ flex: 1 }} />
+        <Shortcut icon="calendar" label={tr('روزانه', 'Daily')} dot={dailyReady} onPress={onDaily} />
+        <Shortcut icon="chest" label={tr('صندوقچه', 'Chest')} dot={chestReady} onPress={onChest} />
+        <Shortcut icon="gamepad" label={tr('حالت‌ها', 'Modes')} onPress={() => onTab('play')} />
+      </Animated.View>
+
+      {/* focused gate card */}
+      <View pointerEvents="box-none" style={[s.bottomWrap, { bottom: cardBottom }]}>
+        <Animated.View key={g.key} entering={FadeInDown.duration(260)} style={[s.say, { flexDirection: rowDir() }]}>
+          <Robot size={46} mood={focus % 2} />
+          <View style={[s.bubble, { borderColor: g.color + '88' }]}><T s={tr(g.say[0], g.say[1])} n={2} style={{ fontSize: 12, color: '#e8fbff', textAlign: isRTL() ? 'right' : 'left' }} /></View>
+        </Animated.View>
+        {g.key === 'online' ? <OnlineChips onOnline={onOnline} /> : null}
+        <Chamfer style={[s.card]} color={g.color} color2={N.purple} k={14}>
+          <View style={{ flexDirection: rowDir(), alignItems: 'center', padding: 12 }}>
+            <Icon name={g.icon} size={44} plate={g.color} />
+            <View style={{ flex: 1, marginHorizontal: 10, alignItems: isRTL() ? 'flex-end' : 'flex-start' }}>
+              <T s={tr(g.fa, g.en)} n={1} style={{ fontFamily: F.title, fontSize: 18 }} />
+              <T s={isRTL() ? g.en : g.fa} n={1} raw style={{ fontFamily: isRTL() ? F.head : F.fa, fontSize: 9, letterSpacing: isRTL() ? 2 : 0, color: g.color }} />
+            </View>
+            <Btn label={tr('ورود', 'ENTER')} small onPress={() => open(focus)} colors={g.key === 'cup' ? G.gold : g.key === 'online' ? ['#ff4fd8', '#a43bff', '#5b3bff'] : G.primary} style={{ minWidth: 104 }} />
+          </View>
+        </Chamfer>
+        <View style={[s.dots, { flexDirection: 'row' }]}>
+          {[...gates.keys()].sort((a, b) => gates[a].ang - gates[b].ang).map(i => <Press key={i} onPress={() => snapTo(i)} sound={false} haptic={false}><View style={[s.dot, i === focus && { backgroundColor: gates[i].color, width: 18 }]} /></Press>)}
         </View>
-        <Float amp={4} dur={3400} delay={900} style={{ position: 'absolute', right: 10, bottom: 40 }}>
-          <Img src={UI2.d_crystal} style={{ width: W * .14, height: W * .14 * 1.9 }} />
-        </Float>
       </View>
-
-      <Enter i={0} style={{ alignItems: 'center', marginTop: -6 }}>
-        <T s="NEXORA" style={{ fontFamily: F.title, fontSize: 30, letterSpacing: 8, color: '#fff', textShadowColor: C.cyan, textShadowRadius: 16 }} />
-        <T s="FINGER SOCCER · DEEP SPACE LEAGUE" style={{ fontFamily: F.head, fontSize: 8, letterSpacing: 3, color: C.cyan, marginTop: 2 }} />
-      </Enter>
-
-      <Enter i={1} style={{ paddingHorizontal: 16, marginTop: 14 }}>
-        <PlayButton onPress={() => onMode(MODES[0])} />
-      </Enter>
-      <Enter i={1} style={{ paddingHorizontal: 16, marginTop: 12 }}>
-        <OnlineCard onOnline={onOnline} />
-      </Enter>
-
-      {/* league strip */}
-      <Enter i={2} style={{ paddingHorizontal: 16, marginTop: 12 }}>
-        <Press onPress={() => onTab('profile')}>
-          <Panel style={{ flexDirection: 'row', alignItems: 'center', padding: 12 }} accent={C.gold}>
-            <Img src={(UI as any)[MEDAL[Math.min(lg.idx, MEDAL.length - 1)]]} style={{ width: 52, height: 52 }} />
-            <View style={{ flex: 1, marginHorizontal: 10 }}>
-              <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center' }}>
-                <T s={`لیگ ${LEAGUE_FA[lg.name]}`} style={{ fontFamily: F.bold, fontSize: 15 }} />
-                <T s={`${p.trophies} / ${lg.to}`} style={{ fontFamily: F.head, fontSize: 11, color: C.gold }} />
-              </View>
-              <View style={{ marginTop: 6 }}><Bar v={(p.trophies - lg.from) / (lg.to - lg.from)} color={C.gold} color2={C.orange} /></View>
-            </View>
-            <Img src={UI2.x_trophy} style={{ width: 44, height: 44 }} />
-          </Panel>
-        </Press>
-      </Enter>
-
-      {/* modes rail */}
-      <Title s="حالت‌های بازی" en="GAME MODES" right={<Press onPress={() => onTab('play')}><T s="همه ›" style={{ color: C.cyan, fontSize: 12 }} /></Press>} />
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 12 }}>
-        {MODES.map((m, i) => (
-          <Enter key={m.k} i={i + 3}>
-            <Press onPress={() => onMode(m)} style={[s.mode, { borderColor: m.color + '55' }]}>
-              <LinearGradient colors={[m.color + '40', 'rgba(8,12,34,.2)', 'rgba(6,9,26,.95)']} style={StyleSheet.absoluteFill} />
-              <Img src={m.img} style={{ width: 92, height: 92, marginTop: 6 }} />
-              <T s={m.name} style={{ fontFamily: F.bold, fontSize: 13, marginTop: 2 }} />
-              <T s={m.en} style={{ fontFamily: F.head, fontSize: 7, letterSpacing: 1.5, color: m.color, marginTop: 2 }} />
-            </Press>
-          </Enter>
-        ))}
-      </ScrollView>
-
-      {/* menu plates */}
-      <Title s="منو" en="COMMAND DECK" />
-      <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', paddingHorizontal: 16, justifyContent: 'space-between' }}>
-        {plates.map((pl, i) => (
-          <Enter key={pl.label} i={i + 2} style={{ width: plateW, marginBottom: 8 }}>
-            <Press onPress={pl.on} scaleTo={.96}>
-              <View style={{ width: plateW, height: plateW * .43 }}>
-                <Img src={pl.img} style={StyleSheet.absoluteFill} />
-                <View style={[s.plateTxt, { left: plateW * .34 }]}>
-                  <T s={pl.label} n={1} style={{ fontFamily: F.bold, fontSize: plateW < 170 ? 12 : 14, textShadowColor: '#0a3cff', textShadowRadius: 8 }} />
-                  <T s={pl.sub} style={{ fontFamily: F.head, fontSize: 7, letterSpacing: 2, color: C.cyan }} />
-                </View>
-                {pl.dot ? <View style={s.dot} /> : null}
-              </View>
-            </Press>
-          </Enter>
-        ))}
-      </View>
-
-      {/* loadout */}
-      <Title s="ترکیب فعلی" en="LOADOUT" right={<Press onPress={() => onTab('team')}><T s="ویرایش ›" style={{ color: C.cyan, fontSize: 12 }} /></Press>} />
-      <Enter i={4} style={{ paddingHorizontal: 16 }}>
-        <Press onPress={() => onTab('team')} scaleTo={.98}>
-          <Panel style={{ flexDirection: 'row-reverse', padding: 12, alignItems: 'center' }}>
-            <Load img={TEAM_IMG[teamKey(me)]} round label={me.name} sub="دیسک" />
-            <Load img={BALL_IMG['b' + p.ball]} round label={BALL_NAMES[p.ball]} sub="توپ" />
-            <Load img={FIELD_THUMB[FIELDS[p.field].id]} label={FIELDS[p.field].name} sub="زمین" />
-            <View style={{ flex: 1, alignItems: 'center' }}>
-              <Img src={UI2.x_tactics} style={{ width: 48, height: 48 }} />
-              <T s={FORMS[p.form][0]} style={{ fontFamily: F.head, fontSize: 11, marginTop: 2 }} />
-              <T s="ترکیب" style={{ fontSize: 10, color: C.dim }} />
-            </View>
-          </Panel>
-        </Press>
-      </Enter>
-
-      {/* missions */}
-      {pending.length ? <Title s="مأموریت‌ها" en="MISSIONS" right={<Press onPress={() => onTab('profile')}><T s="همه ›" style={{ color: C.cyan, fontSize: 12 }} /></Press>} /> : null}
-      {pending.map((a, i) => {
-        const cur = Math.min(a.max, a.cur(p)), done = cur >= a.max;
-        return (
-          <Enter key={a.id} i={i + 5} style={{ paddingHorizontal: 16, marginBottom: 8 }}>
-            <Press onPress={() => onTab('profile')} scaleTo={.98}>
-              <Panel style={{ flexDirection: 'row-reverse', alignItems: 'center', padding: 10 }} accent={done ? C.green : undefined}>
-                <Img src={UI2[a.icon]} style={{ width: 46, height: 46 }} />
-                <View style={{ flex: 1, marginHorizontal: 10 }}>
-                  <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between' }}>
-                    <T s={a.name} style={{ fontFamily: F.bold, fontSize: 13 }} />
-                    <T s={`${fa(cur)}/${fa(a.max)}`} style={{ fontSize: 11, color: done ? C.green : C.dim }} />
-                  </View>
-                  <T s={a.desc} style={{ fontSize: 11, color: C.dim, textAlign: 'right' }} />
-                  <View style={{ marginTop: 5 }}><Bar v={cur / a.max} h={6} color={done ? C.green : C.cyan} /></View>
-                </View>
-                <View style={{ alignItems: 'center', width: 54 }}>
-                  <Img src={UI2.c_coin} style={{ width: 26, height: 26 }} />
-                  <T s={`+${a.coins}`} style={{ fontFamily: F.head, fontSize: 10, color: C.gold }} />
-                </View>
-              </Panel>
-            </Press>
-          </Enter>
-        );
-      })}
-    </ScrollView>
+    </View>
   );
 }
 export default memo(Home);
 
-function Load({ img, label, sub, round }: { img: any; label: string; sub: string; round?: boolean }) {
+// label floating above each gate, positioned on the UI thread
+const GateLabel = memo(function GateLabel({ gate, yaw, cfg, focused }: { gate: Gate; yaw: any; cfg: SceneCfg; focused: boolean }) {
+  const LW = 150, ang = gate.ang, main = !!gate.main;
+  const a = useAnimatedStyle(() => {
+    const r = gateRect(ang, yaw.value, cfg);
+    if (!r || r[2] < -40 || r[0] > cfg.W + 40) return { opacity: 0, transform: [{ translateX: -999 }, { translateY: -999 }] };
+    const k = Math.max(.7, Math.min(1.15, 6.6 / r[4]));
+    const d = Math.abs(ang - yaw.value);
+    return { opacity: Math.max(0, 1 - d / (60 * DEG)), transform: [{ translateX: (r[0] + r[2]) / 2 - LW / 2 }, { translateY: r[1] - 44 * k - (main ? 10 : 0) }, { scale: k }] };
+  });
   return (
-    <View style={{ flex: 1, alignItems: 'center' }}>
-      <Img src={img} style={round ? { width: 48, height: 48, borderRadius: 24 } : { width: 36, height: 48, borderRadius: 6 }} fit={round ? 'contain' : 'cover'} />
-      <T s={label} n={1} style={{ fontFamily: F.bold, fontSize: 10, marginTop: 4, maxWidth: 76 }} />
-      <T s={sub} style={{ fontSize: 10, color: C.dim }} />
-    </View>
-  );
-}
-
-function PlayButton({ onPress }: { onPress: () => void }) {
-  const sh = useSharedValue(0);
-  useEffect(() => { sh.value = withRepeat(withSequence(withTiming(1, { duration: 1600, easing: Easing.inOut(Easing.quad) }), withTiming(1, { duration: 900 })), -1, false); }, []);
-  const shine = useAnimatedStyle(() => ({ transform: [{ translateX: -160 + sh.value * 560 }, { rotate: '20deg' }] }));
-  return (
-    <Press onPress={onPress} scaleTo={.96}>
-      <View style={s.play}>
-        <LinearGradient colors={G.primary as any} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
-        <LinearGradient colors={['rgba(255,255,255,.4)', 'rgba(255,255,255,.05)', 'rgba(255,255,255,0)']} style={[StyleSheet.absoluteFill, { height: '55%' }]} />
-        <Animated.View style={[s.shine, shine]} />
-        <Img src={UI2.x_ball} style={{ width: 54, height: 54, marginRight: 6 }} />
-        <View style={{ alignItems: 'center' }}>
-          <T s="شروع بازی" style={{ fontFamily: F.title, fontSize: 22, color: '#fff', textShadowColor: 'rgba(0,0,40,.5)', textShadowRadius: 8 }} />
-          <T s="QUICK MATCH" style={{ fontFamily: F.head, fontSize: 9, letterSpacing: 3, color: 'rgba(255,255,255,.85)' }} />
-        </View>
+    <Animated.View pointerEvents="none" style={[{ position: 'absolute', left: 0, top: 0, width: LW, alignItems: 'center' }, a]}>
+      <View style={[s.gl, { borderColor: gate.color + (focused ? 'ff' : '77'), backgroundColor: focused ? 'rgba(10,6,38,.9)' : 'rgba(6,4,22,.7)' }]}>
+        <T s={tr(gate.fa, gate.en)} n={1} style={{ fontFamily: F.bold, fontSize: 13, color: '#fff' }} />
+        <T s={gate.en} n={1} raw style={{ fontFamily: F.head, fontSize: 7, letterSpacing: 2, color: gate.color }} />
       </View>
+    </Animated.View>
+  );
+});
+
+// the big stadium screen above the main gate
+const ArenaScreen = memo(function ArenaScreen({ yaw, cfg }: { yaw: any; cfg: SceneCfg }) {
+  const SW = 230;
+  const a = useAnimatedStyle(() => {
+    const d = -yaw.value; if (Math.abs(d) > 50 * DEG) return { opacity: 0, transform: [{ translateX: -999 }] };
+    const x = cfg.W / 2 + Math.tan(d) * cfg.f;
+    const r = gateRect(0, yaw.value, cfg);
+    return { opacity: 1 - Math.abs(d) / (50 * DEG), transform: [{ translateX: x - SW / 2 }, { translateY: (r ? r[1] : cfg.cy - cfg.f * .4) - 78 }] };
+  });
+  return (
+    <Animated.View pointerEvents="none" style={[{ position: 'absolute', left: 0, top: 0, width: SW }, a]}>
+      <Chamfer k={10} color={N.cyan} color2={N.purple} fill={['rgba(16,10,60,.88)', 'rgba(4,2,16,.94)']} brackets={false}>
+        <View style={{ paddingVertical: 8, paddingHorizontal: 10, alignItems: 'center' }}>
+          <T s={tr('بازی سریع · ورود به آرنا', 'QUICK MATCH · ENTER ARENA')} n={1} style={{ fontFamily: F.bold, fontSize: 13, color: '#e8fbff' }} />
+          <T s={tr('مسابقه بعدی · جام نکسورا', 'NEXT MATCH · NEXORA CUP')} n={1} style={{ fontSize: 10, color: '#9fefff', marginTop: 1 }} />
+          <T s="NEXORA ARENA" raw style={{ fontFamily: F.head, fontSize: 9, letterSpacing: 4, color: N.cyan, marginTop: 2 }} />
+        </View>
+      </Chamfer>
+    </Animated.View>
+  );
+});
+
+function Shortcut({ icon, label, dot, onPress }: { icon: string; label: string; dot?: boolean; onPress: () => void }) {
+  return (
+    <Press onPress={onPress} style={s.sc}>
+      <Icon name={icon} size={28} />
+      <T s={label} n={1} style={{ fontSize: 9, color: '#cfe8ff', marginTop: 1 }} />
+      {dot ? <View style={s.badge} /> : null}
     </Press>
   );
 }
 
-function Orbit({ size }: { size: number }) {
-  const r = useSharedValue(0);
-  useEffect(() => { r.value = withRepeat(withTiming(1, { duration: 18000, easing: Easing.linear }), -1, false); }, []);
-  const a = useAnimatedStyle(() => ({ transform: [{ rotate: `${r.value * 360}deg` }, { scaleY: .32 }] }));
+function OnlineChips({ onOnline }: { onOnline: (e?: OnlineEntry) => void }) {
+  const items: [Exclude<OnlineEntry, object>, string, string, string][] = [['duels', 'دوئل', 'Duels', 'crown'], ['worldcup', 'جام جهانی', 'World Cup', 'trophy'], ['tours', 'تورنمنت', 'Tours', 'medal'], ['leagues', 'لیگ', 'Leagues', 'shield'], ['challenges', 'چالش', 'Challenges', 'calendar'], ['social', 'اجتماعی', 'Social', 'team']];
   return (
-    <Animated.View pointerEvents="none" style={[{ position: 'absolute', bottom: size * .08, width: size, height: size, borderRadius: size / 2, borderWidth: 2, borderColor: 'rgba(92,225,255,.35)', borderStyle: 'dashed' }, a]} />
-  );
-}
-
-function Bubble({ text, style }: { text: string; style?: any }) {
-  return (
-    <Float amp={3} dur={2000} style={style}>
-      <View style={s.bubble}><T s={text} style={{ fontSize: 11, color: '#e8f6ff' }} /></View>
-      <View style={s.bubbleTail} />
-    </Float>
+    <Animated.View entering={FadeIn.duration(220)} style={{ flexDirection: rowDir(), flexWrap: 'wrap', justifyContent: 'center', marginBottom: 6 }}>
+      {items.map(([k, f, e, ic]) => (
+        <Press key={k} onPress={() => onOnline(k)} style={[s.chip, { flexDirection: rowDir() }]}>
+          <Icon name={ic} size={16} /><T s={tr(f, e)} n={1} style={{ fontFamily: F.bold, fontSize: 10, marginHorizontal: 4 }} />
+        </Press>
+      ))}
+    </Animated.View>
   );
 }
 
 const s = StyleSheet.create({
-  play: { height: 74, borderRadius: 24, overflow: 'hidden', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: 'rgba(255,255,255,.5)', shadowColor: C.cyan, shadowOpacity: .7, shadowRadius: 20, shadowOffset: { width: 0, height: 0 }, elevation: 14 },
-  shine: { position: 'absolute', top: -40, width: 60, height: 160, backgroundColor: 'rgba(255,255,255,.28)' },
-  mode: { width: 124, height: 160, marginHorizontal: 5, borderRadius: 22, borderWidth: 1, overflow: 'hidden', alignItems: 'center', backgroundColor: 'rgba(8,12,34,.8)' },
-  plateTxt: { position: 'absolute', right: '9%', top: 0, bottom: '8%', justifyContent: 'center', alignItems: 'center' },
-  dot: { position: 'absolute', top: 6, right: 14, width: 11, height: 11, borderRadius: 6, backgroundColor: C.red, borderWidth: 2, borderColor: '#0b1236' },
-  bubble: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 14, backgroundColor: 'rgba(14,30,80,.92)', borderWidth: 1, borderColor: 'rgba(92,225,255,.5)' },
-  bubbleTail: { position: 'absolute', bottom: -5, left: 14, width: 10, height: 10, backgroundColor: 'rgba(14,30,80,.92)', borderRightWidth: 1, borderBottomWidth: 1, borderColor: 'rgba(92,225,255,.5)', transform: [{ rotate: '45deg' }] },
+  strip: { position: 'absolute', left: 10, right: 10, alignItems: 'center' },
+  league: { alignItems: 'center', paddingHorizontal: 8, height: 44, borderRadius: 8, backgroundColor: 'rgba(6,4,22,.78)', borderWidth: 1, borderColor: 'rgba(255,210,87,.4)', maxWidth: 190 },
+  lgBar: { width: 70, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,.12)', marginTop: 3, overflow: 'hidden' },
+  lgFill: { height: '100%', backgroundColor: C.gold },
+  sc: { width: 50, height: 50, marginLeft: 6, borderRadius: 8, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(6,4,22,.78)', borderWidth: 1, borderColor: 'rgba(39,230,255,.35)' },
+  badge: { position: 'absolute', top: 3, right: 3, width: 9, height: 9, borderRadius: 5, backgroundColor: C.red, borderWidth: 1.5, borderColor: '#0b1236' },
+  bottomWrap: { position: 'absolute', left: 12, right: 12 },
+  say: { alignItems: 'flex-end', marginBottom: 6 },
+  bubble: { flex: 1, marginHorizontal: 6, marginBottom: 8, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 10, borderWidth: 1, backgroundColor: 'rgba(8,6,30,.88)' },
+  card: { minHeight: 70 },
+  dots: { justifyContent: 'center', marginTop: 8 },
+  dot: { width: 6, height: 6, borderRadius: 3, marginHorizontal: 3, backgroundColor: 'rgba(255,255,255,.3)' },
+  gl: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, borderWidth: 1, alignItems: 'center' },
+  chip: { alignItems: 'center', height: 30, paddingHorizontal: 8, margin: 2, borderRadius: 6, backgroundColor: 'rgba(8,6,30,.88)', borderWidth: 1, borderColor: 'rgba(255,79,216,.45)' },
 });

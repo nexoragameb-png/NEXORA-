@@ -1,9 +1,10 @@
 // Tournaments: list (registration / running / finished), create, detail with bracket or standings, live updates.
+import { xl } from '../i18n';
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FlatList, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { UI2 } from '../game/assets';
-import { Btn, Img, Panel, Press, Segment, T } from '../ui/kit';
+import { Btn, Img, Panel, Press, Segment, T, rowDir, startAlign } from '../ui/kit';
 import { Sheet, SheetHandle } from '../ui/Chrome';
 import { C, F, G, fa } from '../ui/theme';
 import { buzz, sfx } from '../sound';
@@ -67,11 +68,11 @@ const TourRow = memo(function TourRow({ t, count, onPress }: { t: Tournament; co
   return (
     <View style={{ paddingHorizontal: S.l, marginBottom: S.s }}>
       <Card onPress={onPress} accent={sc}>
-        <View style={{ flexDirection: 'row-reverse', alignItems: 'center' }}>
+        <View style={{ flexDirection: rowDir(), alignItems: 'center' }}>
           <Img src={t.status === 'finished' ? UI2.x_medal : UI2.x_trophy} style={{ width: 52, height: 52 }} />
-          <View style={{ flex: 1, marginRight: S.m, alignItems: 'flex-end' }}>
+          <View style={{ flex: 1, marginRight: S.m, alignItems: startAlign() }}>
             <T s={t.name} n={1} style={{ fontFamily: F.bold, fontSize: TS.body }} />
-            <View style={{ flexDirection: 'row-reverse', marginTop: S.xs, flexWrap: 'wrap', rowGap: 4 }}>
+            <View style={{ flexDirection: rowDir(), marginTop: S.xs, flexWrap: 'wrap', rowGap: 4 }}>
               <Badge label={FORMAT_FA[t.format]} color={C.violet} /><Badge label={t.mode.toUpperCase()} color={C.sky} /><Badge label={sl} color={sc} live={t.status === 'running'} />
             </View>
           </View>
@@ -104,9 +105,9 @@ function CreateTournament({ toast, onDone }: { toast: (m: string, k?: string) =>
   };
   return (
     <ScrollView contentContainerStyle={{ padding: S.l, paddingBottom: S.xl * 2 }} keyboardShouldPersistTaps="handled">
-      <Field label="نام تورنمنت" value={name} onChangeText={setName} maxLength={40} placeholder="جام کهکشان" />
+      <Field label="نام تورنمنت" value={name} onChangeText={setName} maxLength={40} placeholder={xl("جام کهکشان")} />
       <T s="فرمت" style={st.lbl} />
-      <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: S.s }}>
+      <View style={{ flexDirection: rowDir(), flexWrap: 'wrap', gap: S.s }}>
         {(Object.keys(FORMAT_FA) as Format[]).filter(f => f !== 'world_cup').map(f => (
           <Press key={f} onPress={() => setFormat(f)} style={[st.chip, f === format && st.chipOn]}><T s={FORMAT_FA[f]} style={{ fontFamily: F.bold, fontSize: TS.small, color: f === format ? '#fff' : C.dim }} /></Press>
         ))}
@@ -185,13 +186,13 @@ export function TournamentDetail({ id, onBack, onRoom, toast }: DetailProps) {
       <ScrollView contentContainerStyle={{ paddingTop: ins.top + 76, paddingBottom: ins.bottom + S.xl }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         <View style={{ paddingHorizontal: S.l }}>
           <Panel style={{ padding: S.m }} accent={sc}>
-            <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', rowGap: 4 }}>
+            <View style={{ flexDirection: rowDir(), flexWrap: 'wrap', rowGap: 4 }}>
               <Badge label={sl} color={sc} live={t.status === 'running'} /><Badge label={`${fa(entries.length)}/${fa(t.max_entries)} شرکت‌کننده`} color={C.sky} />
               <Badge label={`💎 ${fa(t.prize_gems ?? 0)} قهرمان`} color="#9fd8ff" />              {t.min_level > 1 ? <Badge label={`حداقل سطح ${fa(t.min_level)}`} color={C.green} /> : null}
               {t.status !== 'registration' && t.current_round ? <Badge label={`دور ${fa(t.current_round)}`} color={C.violet} /> : null}
             </View>
             {winner ? (
-              <View style={{ flexDirection: 'row-reverse', alignItems: 'center', marginTop: S.m }}>
+              <View style={{ flexDirection: rowDir(), alignItems: 'center', marginTop: S.m }}>
                 <Img src={UI2.x_trophy} style={{ width: 44, height: 44 }} />
                 <T s={`قهرمان: ${winner}`} style={{ fontFamily: F.title, fontSize: TS.h, color: C.gold, marginRight: S.s }} />
               </View>
@@ -374,7 +375,7 @@ function Override({ m, names, onClose, onSave }: { m: TMatch; names: Record<stri
       <Panel style={{ width: '88%', maxWidth: 380, padding: S.l }} glow>
         <T s="ثبت نتیجه توسط برگزارکننده" style={{ fontFamily: F.bold, fontSize: TS.h, textAlign: 'center', marginBottom: S.m }} />
         {[[m.entry_a, a, setA], [m.entry_b, b, setB]].map(([e, v, set], i) => (
-          <View key={i} style={{ flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', marginBottom: S.s }}>
+          <View key={i} style={{ flexDirection: rowDir(), alignItems: 'center', justifyContent: 'space-between', marginBottom: S.s }}>
             <T s={names[(e as string) || ''] || '؟'} n={1} style={{ flex: 1, fontSize: TS.body, textAlign: 'right' }} />
             {step(v as number, set as any)}
           </View>

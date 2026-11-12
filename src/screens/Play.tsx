@@ -4,7 +4,7 @@ import Animated, { Extrapolation, interpolate, useAnimatedScrollHandler, useAnim
 import { LinearGradient } from 'expo-linear-gradient';
 import { UI, UI2 } from '../game/assets';
 import { LEAGUES, LEAGUE_FA, league, useStore } from '../store';
-import { Btn, Enter, Float, Img, Panel, Press, Pulse, T, Title } from '../ui/kit';
+import { Btn, Enter, Float, Img, Panel, Press, Pulse, T, Title, rowDir, startAlign } from '../ui/kit';
 import { C, F, G, fa } from '../ui/theme';
 import { MODES, Mode } from './Setup';
 import type { OnlineEntry } from '../nav';
@@ -63,7 +63,7 @@ function Play({ top, bottom, onMode, onOnline }: { top: number; bottom: number; 
 
       {/* rewards info */}
       <Title s="جوایز" en="REWARDS" />
-      <View style={{ flexDirection: 'row-reverse', paddingHorizontal: 12 }}>
+      <View style={{ flexDirection: rowDir(), paddingHorizontal: 12 }}>
         {[[UI2.c_coin, 'برد', '۶۰+ سکه'], [UI2.x_star, 'XP', 'سطح بالاتر'], [UI2.x_trophy, 'جام', 'صعود در لیگ']].map(([img, a, b], i) => (
           <Enter key={i} i={i} style={{ flex: 1, padding: 4 }}>
             <Panel style={{ alignItems: 'center', paddingVertical: 12 }}>

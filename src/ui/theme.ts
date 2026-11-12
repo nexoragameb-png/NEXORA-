@@ -1,3 +1,4 @@
+import { isFa, num } from '../i18n';
 export const C = {
   bg: '#030614',
   bg2: '#060b22',
@@ -40,5 +41,14 @@ export const G = {
   violet: ['#3a1d8a', '#6d3bff', '#c08bff'] as const,
 };
 
-export const fa = (n: number) => n.toLocaleString('fa-IR');
-export const faNum = (s: string | number) => String(s).replace(/\d/g, d => '۰۱۲۳۴۵۶۷۸۹'[+d]);
+// numbers follow the UI language (Persian digits in fa, Latin in en)
+export const fa = (n: number) => num(n);
+export const faNum = (s: string | number) => (isFa() ? String(s).replace(/\d/g, d => '۰۱۲۳۴۵۶۷۸۹'[+d]) : String(s));
+
+// v3 neon palette (reference hub): cyan #27e6ff, purple #a43bff, deep space #02010a
+export const N = {
+  cyan: '#27e6ff', purple: '#a43bff', pink: '#ff4fd8', ink: '#05020f', deep: '#02010a', text: '#e8fbff',
+  glass: 'rgba(10,8,34,.78)', glass2: 'rgba(16,12,52,.9)', edge: 'rgba(39,230,255,.55)', edge2: 'rgba(164,59,255,.55)',
+};
+// rarity colours (common / rare / epic / legendary / deluxe)
+export const RAR = ['#9fb3d9', '#27e6ff', '#b46bff', '#ffd257', '#ff7ae0'] as const;

@@ -6,7 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FIELD_THUMB, FX, UI2 } from '../game/assets';
 import { FIELDS } from '../game/data';
-import { Btn, Img, Panel, Press, Segment, T, Toggle } from '../ui/kit';
+import { Btn, Img, Panel, Press, Segment, T, Toggle, rowDir, startAlign } from '../ui/kit';
 import { Sheet, SheetHandle } from '../ui/Chrome';
 import { C, F, G, fa } from '../ui/theme';
 import { buzz, sfx } from '../sound';
@@ -103,15 +103,15 @@ function LobbyBody({ link, onLeave, onWatch, toast }: Props) {
       <ScrollView contentContainerStyle={{ paddingTop: ins.top + 76, paddingBottom: 140 + ins.bottom, paddingHorizontal: S.l }} showsVerticalScrollIndicator={false}>
         {/* info strip */}
         <Panel style={{ padding: S.m }} accent={C.cyan}>
-          <View style={{ flexDirection: 'row-reverse', alignItems: 'center' }}>
-            <View style={{ flex: 1, alignItems: 'flex-end' }}>
+          <View style={{ flexDirection: rowDir(), alignItems: 'center' }}>
+            <View style={{ flex: 1, alignItems: startAlign() }}>
               <T s="کد اتاق" style={{ fontSize: TS.cap, color: C.dim }} />
               <T s={room.code} style={{ fontFamily: F.title, fontSize: 24, letterSpacing: 4, color: C.cyan }} />
             </View>
             <Press onPress={copy} style={s.codeBtn}><T s="کپی" style={{ fontFamily: F.bold, fontSize: TS.small }} /></Press>
             <Press onPress={share} style={[s.codeBtn, { marginRight: S.s }]}><T s="اشتراک" style={{ fontFamily: F.bold, fontSize: TS.small }} /></Press>
           </View>
-          <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', marginTop: S.s, rowGap: S.xs }}>
+          <View style={{ flexDirection: rowDir(), flexWrap: 'wrap', marginTop: S.s, rowGap: S.xs }}>
             <Badge label={ruleLabel(room.settings)} color={C.violet} />
             <Badge label={FIELDS[room.settings?.field ?? 0]?.name || 'Field'} color={C.sky} />
             <Badge label={room.ranked ? 'رتبه‌ای' : 'دوستانه'} color={room.ranked ? C.gold : C.green} />
@@ -131,7 +131,7 @@ function LobbyBody({ link, onLeave, onWatch, toast }: Props) {
         {room.kind === 'social' ? (
           <Panel style={{ padding: S.m, marginTop: S.m }} accent={C.pink}>
             <T s={`حاضرین (${fa(st.players.length)})`} style={{ fontFamily: F.bold, fontSize: TS.small, textAlign: 'right', marginBottom: S.s }} />
-            <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap' }}>
+            <View style={{ flexDirection: rowDir(), flexWrap: 'wrap' }}>
               {st.players.map(p => (
                 <View key={p.user_id} style={{ alignItems: 'center', width: '25%', marginBottom: S.s }}>
                   <Avatar avatar={p.profiles?.equipped_disc || p.profiles?.avatar} url={p.profiles?.avatar_url} size={52} ring={speaking.has(p.user_id) ? C.green : p.user_id === room.host ? C.gold : C.line} dim={!st.online[p.user_id]} />
@@ -143,7 +143,7 @@ function LobbyBody({ link, onLeave, onWatch, toast }: Props) {
           </Panel>
         ) : null}
         {/* teams */}
-        {room.kind !== 'social' ? <View style={{ flexDirection: 'row-reverse', marginTop: S.m }}>
+        {room.kind !== 'social' ? <View style={{ flexDirection: rowDir(), marginTop: S.m }}>
           {[0, 1].map(t => (
             <View key={t} style={{ flex: 1, marginLeft: t === 0 ? S.s : 0 }}>
               <View style={[s.teamHead, { borderColor: (t === 0 ? C.cyan : C.red) + '66' }]}>
@@ -163,12 +163,12 @@ function LobbyBody({ link, onLeave, onWatch, toast }: Props) {
 
         {/* spectators */}
         {room.kind !== 'social' ? <Panel style={{ padding: S.m, marginTop: S.m }} accent="transparent">
-          <View style={{ flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between' }}>
+          <View style={{ flexDirection: rowDir(), alignItems: 'center', justifyContent: 'space-between' }}>
             <T s={`تماشاگرها (${fa(specs.length)})`} style={{ fontFamily: F.bold, fontSize: TS.small }} />
             {amPlayer && !playing ? <Press onPress={watch} style={s.smallBtn}><T s="فقط تماشا" style={{ fontSize: TS.cap, color: C.sky }} /></Press> : null}
           </View>
           {specs.length ? (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: S.s }} contentContainerStyle={{ flexDirection: 'row-reverse' }}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: S.s }} contentContainerStyle={{ flexDirection: rowDir() }}>
               {specs.map(p => (
                 <View key={p.user_id} style={{ alignItems: 'center', width: 64, marginLeft: S.s }}>
                   <Avatar avatar={p.profiles?.equipped_disc || p.profiles?.avatar} url={p.profiles?.avatar_url} size={40} ring={speaking.has(p.user_id) ? C.green : C.dim2} dim={!st.online[p.user_id]} />
@@ -187,9 +187,9 @@ function LobbyBody({ link, onLeave, onWatch, toast }: Props) {
 
         {/* chat preview */}
         <Press onPress={() => setSheet('chat')} scaleTo={.98} style={{ marginTop: S.m }}>
-          <Panel style={{ padding: S.m, flexDirection: 'row-reverse', alignItems: 'center' }} accent="transparent">
+          <Panel style={{ padding: S.m, flexDirection: rowDir(), alignItems: 'center' }} accent="transparent">
             <Img src={UI2.c_bell} style={{ width: 32, height: 32 }} />
-            <View style={{ flex: 1, marginRight: S.s, alignItems: 'flex-end' }}>
+            <View style={{ flex: 1, marginRight: S.s, alignItems: startAlign() }}>
               <T s="گفتگوی اتاق" style={{ fontFamily: F.bold, fontSize: TS.small }} />
               <T s={st.chat.length ? `${st.chat[st.chat.length - 1].name}: ${st.chat[st.chat.length - 1].text}` : 'برای نوشتن پیام لمس کن'} n={1} style={{ fontSize: TS.cap, color: C.dim, marginTop: 2 }} />
             </View>
@@ -260,7 +260,7 @@ const Seat = memo(function Seat({ p, me, host, online, talking, color, canKick, 
         <Avatar avatar={p.profiles?.equipped_disc || p.profiles?.avatar} url={p.profiles?.avatar_url} size={40} ring={talking ? C.green : color} dim={!online} />
         <View style={[s.dotOn, { backgroundColor: online ? C.green : C.dim2 }]} />
       </View>
-      <View style={{ flex: 1, marginRight: S.s, alignItems: 'flex-end' }}>
+      <View style={{ flex: 1, marginRight: S.s, alignItems: startAlign() }}>
         <T s={(isHost ? '👑 ' : '') + (p.profiles?.username || '…')} n={1} style={{ fontFamily: F.bold, fontSize: TS.small }} />
         <T s={isHost ? 'میزبان' : p.ready ? 'آماده ✓' : 'آماده نیست'} n={1} style={{ fontSize: TS.tiny, color: isHost ? C.gold : p.ready ? C.green : C.dim2 }} />
         <StatBars {...discStats(p.disc_id || p.profiles?.equipped_disc)} compact />
@@ -314,8 +314,8 @@ function RoomSettings({ link, toast, onDone }: { link: RoomLink; toast: (m: stri
       <T s="زمین" style={s.lbl} />
       <FieldPicker value={field} onChange={setField} />
       {room.kind === 'casual' || room.kind === 'social' ? (<>
-        <View style={{ flexDirection: 'row-reverse', alignItems: 'center', marginTop: S.l }}><T s="اتاق خصوصی (فقط با کد)" style={{ flex: 1, textAlign: 'right', fontFamily: F.bold, fontSize: TS.small }} /><Toggle on={priv} onChange={setPriv} /></View>
-        <View style={{ flexDirection: 'row-reverse', alignItems: 'center', marginTop: S.m }}><T s="چت صوتی" style={{ flex: 1, textAlign: 'right', fontFamily: F.bold, fontSize: TS.small }} /><Toggle on={voice} onChange={setVoice} /></View>
+        <View style={{ flexDirection: rowDir(), alignItems: 'center', marginTop: S.l }}><T s="اتاق خصوصی (فقط با کد)" style={{ flex: 1, textAlign: 'right', fontFamily: F.bold, fontSize: TS.small }} /><Toggle on={priv} onChange={setPriv} /></View>
+        <View style={{ flexDirection: rowDir(), alignItems: 'center', marginTop: S.m }}><T s="چت صوتی" style={{ flex: 1, textAlign: 'right', fontFamily: F.bold, fontSize: TS.small }} /><Toggle on={voice} onChange={setVoice} /></View>
       </>) : null}
       <Btn label={busy ? 'در حال ذخیره…' : 'ذخیره'} onPress={save} disabled={busy} style={{ marginTop: S.l }} />
     </ScrollView>

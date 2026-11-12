@@ -5,8 +5,9 @@ import { BALL_IMG, FIELD_THUMB, TEAM_IMG, UI, UI2 } from '../game/assets';
 import { BALL_NAMES, FIELDS, FORMS, TEAMS, Team } from '../game/data';
 import { teamById, teamKey } from '../game/util';
 import { Profile, useStore } from '../store';
-import { Btn, Float, Img, Press, Pulse, Segment, T } from '../ui/kit';
+import { Btn, Float, Img, Press, Pulse, Segment, T, rowDir, startAlign } from '../ui/kit';
 import { C, F, G } from '../ui/theme';
+import { ModeArt } from '../ui/vec/Art';
 import type { MatchCfg } from '../game/engine';
 import { discStats } from '../net/discs';
 
@@ -14,7 +15,7 @@ export type ModeKey = 'quick' | 'local' | 'cup' | 'galaxy' | 'train';
 export type Mode = { k: ModeKey; img: any; name: string; en: string; desc: string; reward: string; color: string };
 export const MODES: Mode[] = [
   { k: 'quick', img: UI.portal_gamepad, name: 'بازی سریع', en: 'QUICK MATCH', desc: 'یک مسابقه‌ی فوری مقابل هوش مصنوعی', reward: 'سکه، XP و جام', color: C.cyan },
-  { k: 'cup', img: UI.portal_globe, name: 'جام نکسورا', en: 'NEXORA CUP', desc: 'سه حریف پشت سر هم تا فینال؛ هر مرحله سخت‌تر', reward: '۲ برابر جایزه + ۲۰ الماس قهرمانی', color: C.gold },
+  { k: 'cup', img: UI.cup, name: 'جام نکسورا', en: 'NEXORA CUP', desc: 'سه حریف پشت سر هم تا فینال؛ هر مرحله سخت‌تر', reward: '۲ برابر جایزه + ۲۰ الماس قهرمانی', color: C.gold },
   { k: 'galaxy', img: UI.portal_galaxy, name: 'چالش کهکشانی', en: 'GALAXY CHALLENGE', desc: 'دو دقیقه مقابل ربات افسانه‌ای', reward: '۳ برابر جایزه', color: C.violet },
   { k: 'local', img: UI.portal_friends, name: 'دو نفره', en: 'LOCAL 2 PLAYER', desc: 'با دوستت روی یک گوشی بازی کن', reward: 'فقط برای افتخار', color: C.green },
   { k: 'train', img: UI.portal_brain, name: 'تمرین', en: 'TRAINING', desc: 'بدون تایمر، ربات آسان، برای گرم کردن دست', reward: 'XP کم، بدون جام', color: C.sky },
@@ -49,7 +50,7 @@ export default function Setup({ mode, onStart, onTeam }: { mode: Mode; onStart: 
     <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 30 }} showsVerticalScrollIndicator={false}>
       <View style={{ alignItems: 'center', height: 150, justifyContent: 'center' }}>
         <Pulse size={120} color={mode.color + '55'} />
-        <Float amp={5}><Img src={mode.img} style={{ width: 140, height: 150 }} /></Float>
+        <Float amp={5}><ModeArt icon={mode.img?.__vec || 'play'} color={mode.color} size={124} /></Float>
       </View>
       <T s={mode.desc} style={{ textAlign: 'center', color: '#c8e2ff', fontSize: 14 }} />
       <View style={[s.reward, { borderColor: mode.color + '66', backgroundColor: mode.color + '18' }]}><Img src={UI2.c_coin} style={{ width: 22, height: 22, marginLeft: 6 }} /><T s={mode.reward} style={{ fontSize: 12, color: '#ffe9a8' }} /></View>
@@ -61,7 +62,7 @@ export default function Setup({ mode, onStart, onTeam }: { mode: Mode; onStart: 
           <View style={[s.disc, { borderColor: C.cyan, shadowColor: C.cyan }]}><Img src={TEAM_IMG[teamKey(me)]} style={s.logo} /></View>
           <T s={me.name} n={1} style={s.tn} /><T s="تغییر تیم" style={[s.small, { color: C.cyan }]} />
         </Press>
-        <Img src={UI.vs} style={{ width: 70, height: 60 }} />
+        <View style={{ width: 64, alignItems: 'center' }}><T s="VS" raw style={{ fontFamily: F.title, fontSize: 26, color: '#fff', textShadowColor: '#a43bff', textShadowRadius: 12 }} /></View>
         <Press onPress={() => mode.k !== 'local' && setOpp(pickOpp())} style={{ flex: 1, alignItems: 'center' }}>
           <View style={[s.disc, { borderColor: C.red, shadowColor: C.red }]}><Img src={mode.k === 'local' ? TEAM_IMG[teamKey(me)] : TEAM_IMG[teamKey(opp)]} style={s.logo} /></View>
           <T s={mode.k === 'local' ? 'بازیکن ۲' : opp.name} n={1} style={s.tn} /><T s={mode.k === 'local' ? ' ' : 'حریف دیگر ↻'} style={[s.small, { color: C.red }]} />
@@ -86,7 +87,7 @@ export default function Setup({ mode, onStart, onTeam }: { mode: Mode; onStart: 
 
       <Press onPress={onTeam} style={s.load}>
         <Img src={BALL_IMG['b' + p.ball]} style={{ width: 38, height: 38, borderRadius: 19 }} />
-        <View style={{ flex: 1, marginHorizontal: 10, alignItems: 'flex-end' }}>
+        <View style={{ flex: 1, marginHorizontal: 10, alignItems: startAlign() }}>
           <T s={`${BALL_NAMES[p.ball]} · ${FIELDS[p.field].name}`} n={1} style={{ fontFamily: F.bold, fontSize: 12 }} />
           <T s={`ترکیب ${FORMS[p.form][0]} · تجهیزات`} style={{ fontSize: 11, color: C.dim }} />
         </View>

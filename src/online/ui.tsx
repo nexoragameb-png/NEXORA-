@@ -1,5 +1,6 @@
 // Shared building blocks for the online screens (same space/neon kit as the rest of the app).
 // Spacing follows an 8pt grid, touch targets are ≥ 44pt, Persian text is right-aligned / RTL.
+import { xl } from '../i18n';
 import React, { memo, useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, TextInput, TextInputProps, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
@@ -7,8 +8,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TEAM_IMG, UI2 } from '../game/assets';
 import { TEAMS, Team } from '../game/data';
-import { teamKey } from '../game/util';
-import { Btn, Img, Panel, Press, T } from '../ui/kit';
+import { teamById, teamKey } from '../game/util';
+import { Btn, Img, Panel, Press, T, rowDir, startAlign } from '../ui/kit';
 import { C, F, G, faNum } from '../ui/theme';
 import type { League } from '../net/supabase';
 import { supabase } from '../net/supabase';
@@ -20,8 +21,8 @@ import { buzz } from '../sound';
 export const S = { xs: 4, s: 8, m: 12, l: 16, xl: 24 };
 export const TS = { title: 20, h: 16, body: 14, small: 12, cap: 11, tiny: 10 };
 
-export const teamOfAvatar = (key?: string | null): Team => TEAMS.find(t => t.id === key || teamKey(t) === key) || TEAMS[0];
-export const discImg = (key?: string | null) => TEAM_IMG[teamKey(teamOfAvatar(key))] || TEAM_IMG.club00;
+export const teamOfAvatar = (key?: string | null): Team => TEAMS.find(t => t.id === key || teamKey(t) === key) || teamById(key);
+export const discImg = (key?: string | null) => TEAM_IMG[teamKey(teamOfAvatar(key))] || TEAM_IMG.real_madrid;
 
 export const Avatar = memo(function Avatar({ avatar, url, size = 40, ring = C.cyan, dim }: { avatar?: string | null; url?: string | null; size?: number; ring?: string; dim?: boolean }) {
   const src = url ? { uri: url } : discImg(avatar);
@@ -40,7 +41,7 @@ export function Header({ title, en, onBack, right, accent = C.cyan }: { title: s
       <LinearGradient pointerEvents="none" colors={['rgba(2,4,14,.95)', 'rgba(2,4,14,.7)', 'transparent']} style={StyleSheet.absoluteFill} />
       <Press onPress={onBack} style={st.back} haptic><T s="‹" style={{ fontFamily: F.title, fontSize: 26, color: C.text, marginTop: -4 }} /></Press>
       <View style={{ minWidth: 44, flexDirection: 'row', alignItems: 'center' }}>{right}</View>
-      <View style={{ flex: 1, alignItems: 'flex-end', marginLeft: S.s }}>
+      <View style={{ flex: 1, alignItems: startAlign(), marginLeft: S.s }}>
         {en ? <T s={en} n={1} style={{ fontFamily: F.head, fontSize: 9, letterSpacing: 3, color: accent }} /> : null}
         <T s={title} n={1} style={{ fontFamily: F.title, fontSize: TS.title }} />
       </View>
@@ -133,7 +134,7 @@ export function ChatPanel({ link, compact, height }: { link: RoomLink; compact?:
         ListEmptyComponent={<View style={{ transform: [{ scaleY: -1 }] }}><T s="هنوز پیامی نیست؛ سلام کن!" style={{ color: C.dim2, fontSize: TS.small, textAlign: 'center', paddingVertical: S.l }} /></View>} />
       <View style={st.chatIn}>
         <Press onPress={send} style={st.send} disabled={!txt.trim()}><Img src={UI2.c_mega} style={{ width: 26, height: 26 }} /></Press>
-        <TextInput value={txt} onChangeText={setTxt} onSubmitEditing={send} returnKeyType="send" maxLength={200} placeholder="پیام…" placeholderTextColor={C.dim2}
+        <TextInput value={txt} onChangeText={setTxt} onSubmitEditing={send} returnKeyType="send" maxLength={200} placeholder={xl("پیام…")} placeholderTextColor={C.dim2}
           selectionColor={C.cyan} allowFontScaling={false} style={st.chatTxt} blurOnSubmit={false} />
       </View>
     </KeyboardAvoidingView>
@@ -191,7 +192,7 @@ export function VoiceBar({ link, enabled = true, compact }: { link: RoomLink; en
 }
 
 export const Divider = () => <View style={{ height: 1, backgroundColor: 'rgba(120,180,255,.14)', marginVertical: S.s }} />;
-export const Row = ({ children, style }: { children: React.ReactNode; style?: any }) => <View style={[{ flexDirection: 'row-reverse', alignItems: 'center' }, style]}>{children}</View>;
+export const Row = ({ children, style }: { children: React.ReactNode; style?: any }) => <View style={[{ flexDirection: rowDir(), alignItems: 'center' }, style]}>{children}</View>;
 export const num = (n: number | string) => faNum(n);
 
 export function Card({ children, style, accent, onPress }: { children: React.ReactNode; style?: any; accent?: string; onPress?: () => void }) {

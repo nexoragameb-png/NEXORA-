@@ -6,7 +6,7 @@ import Animated, { Easing, FadeIn, useAnimatedStyle, useSharedValue, withRepeat,
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { UI2 } from '../game/assets';
-import { Btn, Img, Panel, Press, T } from '../ui/kit';
+import { Btn, Img, Panel, Press, T, rowDir, startAlign } from '../ui/kit';
 import { C, F, G, fa } from '../ui/theme';
 import { buzz } from '../sound';
 import { useAuth } from '../net/auth';
@@ -82,7 +82,7 @@ export default function WorldCup({ onBack, onRoom, toast }: { onBack: () => void
             <Img src={UI2.x_trophy} style={{ width: 96, height: 96 }} />
             <T s={cup?.name || 'جام جهانی NEXORA'} n={1} style={{ fontFamily: F.title, fontSize: 18, color: '#fff', marginTop: 4 }} />
             <T s="۶۴ بازیکن · ۱۶ گروه ۴ نفره · حذفی تا فینال" style={{ fontSize: TS.cap, color: '#f3e3b0', marginTop: 2 }} />
-            <View style={{ flexDirection: 'row-reverse', marginTop: S.s }}>
+            <View style={{ flexDirection: rowDir(), marginTop: S.s }}>
               <Badge label={stageFa} color={C.gold} live={cup?.status === 'running'} />
               <Badge label="جایزه‌ی قهرمان: ۵۰۰ الماس" color="#9fd8ff" />
             </View>
@@ -133,7 +133,7 @@ export default function WorldCup({ onBack, onRoom, toast }: { onBack: () => void
                     <Panel key={g} style={{ padding: S.s, marginBottom: S.s }} accent={rows.some(r => r.id === mine?.id) ? C.gold : 'transparent'}>
                       <T s={`گروه ${GROUP[g]}`} style={{ fontFamily: F.bold, fontSize: TS.small, color: C.gold, textAlign: 'right', marginBottom: 4 }} />
                       {rows.map((e, i) => (
-                        <View key={e.id} style={{ flexDirection: 'row-reverse', alignItems: 'center', height: 30 }}>
+                        <View key={e.id} style={{ flexDirection: rowDir(), alignItems: 'center', height: 30 }}>
                           <View style={[st.dot, { backgroundColor: i < 2 ? C.green : C.dim2 }]} />
                           <T s={e.team_name} n={1} style={{ flex: 1, fontSize: TS.small, textAlign: 'right', marginRight: 6, color: e.id === mine?.id ? C.gold : C.text }} />
                           <T s={`${fa(e.played)} بازی`} style={{ width: 52, fontSize: TS.tiny, color: C.dim, textAlign: 'center' }} />

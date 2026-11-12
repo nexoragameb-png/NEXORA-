@@ -11,6 +11,7 @@ export type Profile = {
   sound: boolean; music: boolean; haptics: boolean; aiLvl: 0 | 1 | 2; limit: number; turnTime: number;
   cupsWon: number; winStreak: number; bestStreak: number; chests: number; lastChest: number; claimedAch: string[]; quality: 'high' | 'low'; volume: number;
   authSeen: boolean;
+  lang: '' | 'fa' | 'en'; // '' = follow the device language
 };
 
 const freeTeams = TEAMS.filter(t => teamPrice(t) === 0).map(t => t.id);
@@ -22,7 +23,7 @@ const DEFAULT: Profile = {
   ownedFields: FIELDS.map((_, i) => i).filter(i => fieldPrice(i) === 0).concat([6]),
   lastDaily: 0, streak: 0,
   sound: true, music: true, haptics: true, aiLvl: 1, limit: 3, turnTime: 15,
-  cupsWon: 0, winStreak: 0, bestStreak: 0, chests: 1, lastChest: 0, claimedAch: [], quality: 'high', volume: 1, authSeen: false,
+  cupsWon: 0, winStreak: 0, bestStreak: 0, chests: 1, lastChest: 0, claimedAch: [], quality: 'high', volume: 1, authSeen: false, lang: '',
 };
 
 export const level = (xp: number) => { let l = 1, need = 100, x = xp; while (x >= need) { x -= need; l++; need = Math.round(need * 1.25); } return { level: l, cur: x, need }; };
@@ -42,7 +43,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [p, setP] = useState<Profile>(DEFAULT); const [ready, setReady] = useState(false);
   const saveT = useRef<any>(null);
   useEffect(() => {
-    AsyncStorage.getItem(KEY).then(s => { if (s) { try { const q = { ...DEFAULT, ...JSON.parse(s) }; q.ownedTeams = Array.from(new Set([...freeTeams, ...q.ownedTeams])).filter(id => TEAMS.some(t => t.id === id)); if (!TEAMS.some(t => t.id === q.team)) q.team = 'club0'; setP(q); } catch { } } }).finally(() => setReady(true));
+    AsyncStorage.getItem(KEY).then(s => { if (s) { try { const q = { ...DEFAULT, ...JSON.parse(s) }; q.ownedTeams = Array.from(new Set([...freeTeams, ...q.ownedTeams])).filter(id => TEAMS.some(t => t.id === id)); if (!TEAMS.some(t => t.id === q.team)) q.team = ({ club6: 'club0' } as any)[q.team] || 'club0'; setP(q); } catch { } } }).finally(() => setReady(true));
   }, []);
   const set = useCallback((u: Partial<Profile> | ((p: Profile) => Partial<Profile>)) => {
     setP(prev => {

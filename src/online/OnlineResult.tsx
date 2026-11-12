@@ -5,7 +5,7 @@ import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withRepe
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TEAM_IMG, UI, UI2 } from '../game/assets';
 import { teamKey } from '../game/util';
-import { Bar, Btn, Img, Panel, Pulse, T } from '../ui/kit';
+import { Bar, Btn, Img, Panel, Pulse, T, rowDir, startAlign } from '../ui/kit';
 import { C, F, G, fa } from '../ui/theme';
 import { buzz, sfx } from '../sound';
 import { useAuth } from '../net/auth';
@@ -73,7 +73,7 @@ export default function OnlineResult({ o, before, onLobby, onLeave }: { o: Onlin
         <View style={{ height: 120, justifyContent: 'center' }}><Spinner /><T s="در حال دریافت جوایز…" style={{ fontSize: TS.cap, color: C.dim, marginTop: S.s }} /></View>
       ) : (
         <>
-          <View style={{ flexDirection: 'row-reverse', marginTop: S.m, alignSelf: 'stretch' }}>
+          <View style={{ flexDirection: rowDir(), marginTop: S.m, alignSelf: 'stretch' }}>
             <Rw img={UI2.x_star} v={dXp ?? 0} c={C.cyan} d={150} label="XP" />
             <Rw img={UI2.c_coin} v={dCoins ?? 0} c={C.gold} d={300} />
             {after && before && after.gems !== before.gems ? <Rw img={UI2.x_gem} v={after.gems - before.gems} c="#9fd8ff" d={380} label="الماس" /> : null}
@@ -82,7 +82,7 @@ export default function OnlineResult({ o, before, onLobby, onLeave }: { o: Onlin
           </View>
           {lp ? (
             <Panel style={{ alignSelf: 'stretch', padding: S.m, marginTop: S.s }} accent="transparent">
-              <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between' }}>
+              <View style={{ flexDirection: rowDir(), justifyContent: 'space-between' }}>
                 <T s={`سطح ${fa(lp.level)}`} style={{ fontFamily: F.bold, fontSize: TS.body }} />
                 <T s={`${fa(lp.cur)} / ${fa(lp.need)} XP`} style={{ fontSize: TS.cap, color: C.dim }} />
               </View>
@@ -90,9 +90,9 @@ export default function OnlineResult({ o, before, onLobby, onLeave }: { o: Onlin
             </Panel>
           ) : null}
           {lvUp ? (
-            <Panel style={{ marginTop: S.s, alignSelf: 'stretch', flexDirection: 'row-reverse', alignItems: 'center', padding: S.m }} accent={C.violet} glow>
+            <Panel style={{ marginTop: S.s, alignSelf: 'stretch', flexDirection: rowDir(), alignItems: 'center', padding: S.m }} accent={C.violet} glow>
               <Img src={UI2.x_crown} style={{ width: 48, height: 48 }} />
-              <View style={{ flex: 1, marginRight: S.m, alignItems: 'flex-end' }}>
+              <View style={{ flex: 1, marginRight: S.m, alignItems: startAlign() }}>
                 <T s={`سطح ${fa(lvUp)}!`} style={{ fontFamily: F.title, fontSize: 18, color: '#d6b8ff' }} />
                 <T s="به سطح جدید رسیدی" style={{ fontSize: TS.cap, color: C.dim }} />
               </View>

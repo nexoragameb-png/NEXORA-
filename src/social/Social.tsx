@@ -1,9 +1,10 @@
 // Social tab: messages (inbox + user search + discover groups/channels), clubs, friends (following/followers).
+import { xl } from '../i18n';
 import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { FlatList, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { UI2 } from '../game/assets';
 import { TEAMS } from '../game/data';
-import { Btn, Img, Panel, Press, Segment, T, Toggle } from '../ui/kit';
+import { Btn, Img, Panel, Press, Segment, T, Toggle, rowDir, startAlign } from '../ui/kit';
 import { Sheet, SheetHandle } from '../ui/Chrome';
 import { C, F, G, fa } from '../ui/theme';
 import { buzz, sfx } from '../sound';
@@ -81,19 +82,19 @@ function Messages({ bottom, toast }: { bottom: number; toast: (m: string, k?: st
 
   const header = (
     <View style={{ paddingHorizontal: S.l }}>
-      <Field value={q} onChangeText={setQ} placeholder="جستجوی بازیکن با نام کاربری…" autoCapitalize="none" />
+      <Field value={q} onChangeText={setQ} placeholder={xl("جستجوی بازیکن با نام کاربری…")} autoCapitalize="none" />
       {found ? (
         <View style={{ marginBottom: S.m }}>
           {found.length ? found.map(p => (
             <View key={p.id} style={st.row}>
               <Press onPress={() => nav.openProfile(p.id)}><Avatar avatar={p.avatar} url={p.avatar_url} size={40} ring={isOnline(p.online_at) ? C.green : C.line} /></Press>
-              <View style={{ flex: 1, marginRight: S.s, alignItems: 'flex-end' }}><T s={p.username} n={1} style={{ fontFamily: F.bold, fontSize: TS.body }} /><T s={`سطح ${fa(p.level)}`} style={{ fontSize: TS.tiny, color: C.dim }} /></View>
+              <View style={{ flex: 1, marginRight: S.s, alignItems: startAlign() }}><T s={p.username} n={1} style={{ fontFamily: F.bold, fontSize: TS.body }} /><T s={`سطح ${fa(p.level)}`} style={{ fontSize: TS.tiny, color: C.dim }} /></View>
               <Press onPress={() => dm(p.id)} style={st.pill}><T s="پیام" style={{ fontFamily: F.bold, fontSize: TS.small, color: C.cyan }} /></Press>
             </View>
           )) : <T s="کسی پیدا نشد" style={{ color: C.dim, textAlign: 'center', marginBottom: S.s }} />}
         </View>
       ) : null}
-      <View style={{ flexDirection: 'row-reverse', marginBottom: S.m }}>
+      <View style={{ flexDirection: rowDir(), marginBottom: S.m }}>
         <Btn label="گروه / کانال جدید" small colors={G.green} onPress={() => setSheet('new')} style={{ flex: 1, marginLeft: S.s }} />
         <Btn label="کشف گروه‌ها" small colors={G.dark} onPress={() => setSheet('discover')} style={{ flex: 1 }} />
       </View>
@@ -128,8 +129,8 @@ const InboxItem = memo(function InboxItem({ r, onPress }: { r: InboxRow; onPress
               : <View style={[st.convIcon, { borderColor: r.kind === 'club' ? C.gold : r.kind === 'channel' ? C.violet : C.cyan }]}><Img src={r.avatar_url ? { uri: r.avatar_url } : r.kind === 'club' ? UI2.x_shield : r.kind === 'channel' ? UI2.c_mega : UI2.x_team} style={{ width: 32, height: 32 }} /></View>}
             {r.kind === 'dm' && isOnline(r.peer?.online_at) ? <View style={st.on} /> : null}
           </View>
-          <View style={{ flex: 1, marginRight: S.s, alignItems: 'flex-end' }}>
-            <View style={{ flexDirection: 'row-reverse', alignItems: 'center' }}>
+          <View style={{ flex: 1, marginRight: S.s, alignItems: startAlign() }}>
+            <View style={{ flexDirection: rowDir(), alignItems: 'center' }}>
               <T s={title} n={1} style={{ fontFamily: F.bold, fontSize: TS.body, maxWidth: 170 }} />
               {r.kind !== 'dm' ? <Badge label={KIND_LABEL[r.kind]} color={r.kind === 'club' ? C.gold : r.kind === 'channel' ? C.violet : C.cyan} /> : null}
             </View>
@@ -160,8 +161,8 @@ function NewConv({ toast, onDone }: { toast: (m: string, k?: string) => void; on
       <T s={kind === 'group' ? 'در گروه همه‌ی اعضا پیام می‌فرستند.' : 'در کانال فقط مالک و مدیرها پیام می‌فرستند.'} style={{ fontSize: TS.cap, color: C.dim, textAlign: 'right', marginTop: S.s, marginBottom: S.m }} />
       <Field label="عنوان" value={title} onChangeText={setTitle} maxLength={40} />
       <Field label="توضیح (اختیاری)" value={about} onChangeText={setAbout} maxLength={200} multiline style={{ height: 80, textAlignVertical: 'top', paddingTop: S.s }} />
-      <View style={{ flexDirection: 'row-reverse', alignItems: 'center', minHeight: 56 }}>
-        <View style={{ flex: 1, alignItems: 'flex-end' }}><T s="عمومی" style={{ fontFamily: F.bold }} /><T s="در بخش «کشف» دیده شود و همه بتوانند بپیوندند" style={{ fontSize: TS.cap, color: C.dim }} /></View>
+      <View style={{ flexDirection: rowDir(), alignItems: 'center', minHeight: 56 }}>
+        <View style={{ flex: 1, alignItems: startAlign() }}><T s="عمومی" style={{ fontFamily: F.bold }} /><T s="در بخش «کشف» دیده شود و همه بتوانند بپیوندند" style={{ fontSize: TS.cap, color: C.dim }} /></View>
         <Toggle on={pub} onChange={setPub} />
       </View>
       <Btn label={busy ? '…' : 'ساختن'} onPress={go} disabled={busy} colors={G.green} style={{ marginTop: S.l }} />
@@ -180,7 +181,7 @@ function Discover({ toast, onOpen }: { toast: (m: string, k?: string) => void; o
       renderItem={({ item }) => (
         <View style={st.row}>
           <View style={[st.convIcon, { borderColor: item.kind === 'channel' ? C.violet : C.cyan }]}><Img src={item.kind === 'channel' ? UI2.c_mega : UI2.x_team} style={{ width: 30, height: 30 }} /></View>
-          <View style={{ flex: 1, marginRight: S.s, alignItems: 'flex-end' }}>
+          <View style={{ flex: 1, marginRight: S.s, alignItems: startAlign() }}>
             <T s={item.title} n={1} style={{ fontFamily: F.bold }} />
             <T s={`${KIND_LABEL[item.kind]} · ${fa(item.members)} عضو${item.about ? ' · ' + item.about : ''}`} n={1} style={{ fontSize: TS.cap, color: C.dim }} />
           </View>
@@ -211,7 +212,7 @@ function Clubs({ bottom, toast }: { bottom: number; toast: (m: string, k?: strin
           <View style={{ paddingHorizontal: S.l }}>
             {profile?.club_id ? <Btn label="باشگاه من" colors={G.gold} small onPress={() => nav.openClub(profile.club_id!)} style={{ marginBottom: S.s }} />
               : <Btn label="ساخت باشگاه (۵۰ الماس)" colors={G.green} small onPress={() => setSheet(true)} style={{ marginBottom: S.s }} />}
-            <Field value={q} onChangeText={setQ} placeholder="جستجوی نام یا تگ باشگاه…" autoCapitalize="characters" />
+            <Field value={q} onChangeText={setQ} placeholder={xl("جستجوی نام یا تگ باشگاه…")} autoCapitalize="characters" />
             <T s="برترین باشگاه‌ها" style={{ fontFamily: F.bold, fontSize: TS.h, textAlign: 'right', marginBottom: S.s }} />
           </View>}
         renderItem={({ item, index }) => (
@@ -220,8 +221,8 @@ function Clubs({ bottom, toast }: { bottom: number; toast: (m: string, k?: strin
               <View style={[st.row, { height: 70 }, item.id === profile?.club_id && { borderColor: C.gold }]}>
                 <T s={fa(index + 1)} style={{ width: 28, fontFamily: F.title, color: index < 3 ? C.gold : C.dim, textAlign: 'center' }} />
                 <Img src={discImg(item.emblem)} style={{ width: 46, height: 46 }} />
-                <View style={{ flex: 1, marginRight: S.s, alignItems: 'flex-end' }}>
-                  <View style={{ flexDirection: 'row-reverse', alignItems: 'center' }}><T s={item.name} n={1} style={{ fontFamily: F.bold, maxWidth: 150 }} /><Badge label={item.tag} color={C.gold} /></View>
+                <View style={{ flex: 1, marginRight: S.s, alignItems: startAlign() }}>
+                  <View style={{ flexDirection: rowDir(), alignItems: 'center' }}><T s={item.name} n={1} style={{ fontFamily: F.bold, maxWidth: 150 }} /><Badge label={item.tag} color={C.gold} /></View>
                   <T s={`${fa(item.members)}/${fa(item.max_members)} عضو · ${item.join_policy === 'open' ? 'آزاد' : item.join_policy === 'request' ? 'با درخواست' : 'فقط دعوت'}`} style={{ fontSize: TS.cap, color: C.dim }} />
                 </View>
                 <View style={{ alignItems: 'center', width: 64 }}><T s={fa(item.power)} style={{ fontFamily: F.title, fontSize: 13, color: C.orange }} /><T s="قدرت" style={{ fontSize: 9, color: C.dim }} /></View>
@@ -258,7 +259,7 @@ function CreateClub({ toast, onDone }: { toast: (m: string, k?: string) => void;
       <Field label="تگ (۲ تا ۵ حرف انگلیسی)" value={tag} onChangeText={v => setTag(v.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5))} autoCapitalize="characters" style={{ textAlign: 'center', fontFamily: F.head, letterSpacing: 3 }} />
       <Field label="توضیح" value={desc} onChangeText={setDesc} maxLength={300} multiline style={{ height: 80, textAlignVertical: 'top', paddingTop: S.s }} />
       <T s="نشان" style={{ fontFamily: F.bold, fontSize: TS.small, color: C.dim, textAlign: 'right', marginBottom: S.s }} />
-      <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: S.s }}>
+      <View style={{ flexDirection: rowDir(), flexWrap: 'wrap', gap: S.s }}>
         {CLUB_EMBLEMS.map(e => <Press key={e} onPress={() => setEmblem(e)} style={[st.emb, e === emblem && { borderColor: C.gold, backgroundColor: 'rgba(255,210,87,.15)' }]}><Img src={discImg(e)} style={{ width: 40, height: 40 }} /></Press>)}
       </View>
       <T s="عضوگیری" style={{ fontFamily: F.bold, fontSize: TS.small, color: C.dim, textAlign: 'right', marginTop: S.l, marginBottom: S.s }} />
@@ -291,7 +292,7 @@ function Friends({ bottom }: { bottom: number }) {
           <Press onPress={() => nav.openProfile(item.id)} scaleTo={.98}>
             <View style={st.row}>
               <Avatar avatar={item.avatar} url={item.avatar_url} size={44} ring={isOnline(item.online_at) ? C.green : C.line} />
-              <View style={{ flex: 1, marginRight: S.s, alignItems: 'flex-end' }}>
+              <View style={{ flex: 1, marginRight: S.s, alignItems: startAlign() }}>
                 <T s={item.username} n={1} style={{ fontFamily: F.bold }} />
                 <T s={isOnline(item.online_at) ? 'آنلاین' : `آخرین بازدید ${timeAgo(item.online_at)} پیش`} style={{ fontSize: TS.cap, color: isOnline(item.online_at) ? C.green : C.dim }} />
               </View>

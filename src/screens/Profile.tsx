@@ -2,17 +2,18 @@ import React, { memo, useState } from 'react';
 import { ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Canvas, Circle, Path, Skia, SweepGradient, vec } from '@shopify/react-native-skia';
-import { TEAM_IMG, UI, UI2 } from '../game/assets';
+import { TEAM_IMG, UI2 } from '../game/assets';
 import { ACHS } from '../game/meta';
 import { teamById, teamKey } from '../game/util';
 import { LEAGUE_FA, league, level, useStore } from '../store';
-import { Bar, Btn, Enter, Float, Img, Panel, Press, Pulse, T, Title } from '../ui/kit';
-import { C, F, G, fa } from '../ui/theme';
+import { textStart, Bar, Btn, Enter, Float, Img, Panel, Press, Pulse, T, Title, rowDir, startAlign } from '../ui/kit';
+import { C, F, G, N, fa } from '../ui/theme';
+import { Chamfer, LeagueEmblem } from '../ui/vec/Art';
+import { tr } from '../i18n';
 import { buzz, sfx } from '../sound';
 import { useAuth } from '../net/auth';
 import { useNav } from '../nav';
 
-const MEDAL = ['medal_bronze', 'medal_silver', 'medal_gold', 'medal_epic', 'shield_epic', 'shield_crown'];
 
 function Profile({ top, bottom, toast }: { top: number; bottom: number; toast: (m: string, k?: string) => void }) {
   const { p, set } = useStore(); const lv = level(p.xp), lg = league(p.trophies), t = teamById(p.team);
@@ -33,28 +34,37 @@ function Profile({ top, bottom, toast }: { top: number; bottom: number; toast: (
   return (
     <ScrollView contentContainerStyle={{ paddingTop: top, paddingBottom: bottom + 10 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
       <Enter i={0} style={{ paddingHorizontal: 16 }}>
-        <Panel style={{ padding: 16, alignItems: 'center' }} accent="#ff7bd5" glow>
-          <LinearGradient colors={['rgba(255,123,213,.18)', 'transparent']} style={StyleSheet.absoluteFill} />
-          <Img src={UI2.d_banner} style={{ position: 'absolute', right: 8, top: 8, width: 34, height: 92, opacity: .8 }} />
-          <Img src={UI2.d_banner} style={{ position: 'absolute', left: 8, top: 8, width: 34, height: 92, opacity: .8 }} />
-          <View style={{ width: 120, height: 120, alignItems: 'center', justifyContent: 'center' }}>
-            <Pulse size={110} color="rgba(255,123,213,.35)" />
-            <View style={s.av}><Img src={TEAM_IMG[teamKey(t)]} style={{ width: 92, height: 92, borderRadius: 46 }} /></View>
-            <View style={s.lv}><T s={`سطح ${fa(lv.level)}`} style={{ fontFamily: F.bold, fontSize: 11, color: '#1b0e00' }} /></View>
+        <View style={{ flexDirection: rowDir(), alignItems: 'baseline', marginBottom: 8 }}>
+          <T s={tr('پروفایل', 'PROFILE')} style={{ fontFamily: F.title, fontSize: 22 }} />
+          <T s={tr('  PILOT DASHBOARD', '  داشبورد')} raw style={{ fontFamily: F.head, fontSize: 9, letterSpacing: 2, color: N.cyan }} />
+        </View>
+        <Chamfer k={16} color="#ff7ae0" color2={N.cyan}>
+          <View style={{ flexDirection: rowDir(), alignItems: 'center', padding: 14 }}>
+            <View style={{ width: 112, height: 112, alignItems: 'center', justifyContent: 'center' }}>
+              <Pulse size={100} color="rgba(255,122,224,.3)" />
+              <View style={s.av}><Img src={TEAM_IMG[teamKey(t)]} style={{ width: 88, height: 88 }} /></View>
+              <View style={s.lv}><T s={tr(`سطح ${fa(lv.level)}`, `LV ${lv.level}`)} style={{ fontFamily: F.bold, fontSize: 11, color: '#1b0e00' }} /></View>
+            </View>
+            <View style={{ flex: 1, marginHorizontal: 12, alignItems: startAlign() }}>
+              <TextInput value={name} onChangeText={setName} onEndEditing={commit} onBlur={commit} maxLength={16} selectionColor={C.cyan}
+                style={[s.name, { textAlign: textStart(), alignSelf: 'stretch' }]} />
+              <T s={tr('برای تغییر نام لمس کن', 'Tap to rename')} style={{ fontSize: 10, color: C.dim2, marginTop: 2 }} />
+              <View style={{ alignSelf: 'stretch', marginTop: 8 }}><Bar v={lv.cur / lv.need} color="#ff7ae0" color2={N.purple} h={9} /></View>
+              <T s={`${lv.cur} / ${lv.need} XP`} raw style={{ fontFamily: F.head, fontSize: 10, color: C.dim, marginTop: 4 }} />
+              <View style={{ flexDirection: rowDir(), alignItems: 'center', marginTop: 6 }}>
+                <LeagueEmblem tier={lg.idx} size={26} />
+                <T s={tr(`لیگ ${LEAGUE_FA[lg.name]} · ${fa(p.trophies)} جام`, `${lg.name} · ${p.trophies} trophies`)} n={1} style={{ fontFamily: F.bold, fontSize: 11, color: C.gold, marginHorizontal: 6 }} />
+              </View>
+            </View>
           </View>
-          <TextInput value={name} onChangeText={setName} onEndEditing={commit} onBlur={commit} maxLength={16} selectionColor={C.cyan}
-            style={s.name} />
-          <T s="برای تغییر نام لمس کن" style={{ fontSize: 10, color: C.dim2, marginTop: 2 }} />
-          <View style={{ alignSelf: 'stretch', marginTop: 10 }}><Bar v={lv.cur / lv.need} color="#ff7bd5" color2={C.violet} h={10} /></View>
-          <T s={`${lv.cur} / ${lv.need} XP`} style={{ fontFamily: F.head, fontSize: 10, color: C.dim, marginTop: 4 }} />
-        </Panel>
+        </Chamfer>
       </Enter>
 
       {auth.configured ? (
         <Enter i={1} style={{ paddingHorizontal: 16, marginTop: 10 }}>
-          <Panel style={{ padding: 12, flexDirection: 'row-reverse', alignItems: 'center' }} accent={hasEmail ? C.green : C.cyan} glow={!hasEmail}>
+          <Panel style={{ padding: 12, flexDirection: rowDir(), alignItems: 'center' }} accent={hasEmail ? C.green : C.cyan} glow={!hasEmail}>
             <Img src={UI2.c_profile} style={{ width: 46, height: 46 }} />
-            <View style={{ flex: 1, marginHorizontal: 10, alignItems: 'flex-end' }}>
+            <View style={{ flex: 1, marginHorizontal: 10, alignItems: startAlign() }}>
               <T s={hasEmail ? 'حساب آنلاین' : 'حساب کاربری نداری'} style={{ fontFamily: F.bold, fontSize: 15 }} />
               <T s={hasEmail ? `${auth.profile?.username || ''} · ${auth.email}` : 'ثبت‌نام کن تا پیشرفت، دیسک‌ها و رتبه‌ات ذخیره شود'} n={1} style={{ fontSize: 11, color: C.dim, marginTop: 2 }} />
             </View>
@@ -65,8 +75,8 @@ function Profile({ top, bottom, toast }: { top: number; bottom: number; toast: (
       ) : null}
 
       <Enter i={1} style={{ paddingHorizontal: 16, marginTop: 10 }}>
-        <Panel style={{ flexDirection: 'row-reverse', alignItems: 'center', padding: 12 }} accent={C.gold}>
-          <Float amp={3}><Img src={(UI as any)[MEDAL[Math.min(lg.idx, 5)]]} style={{ width: 66, height: 66 }} /></Float>
+        <Panel style={{ flexDirection: rowDir(), alignItems: 'center', padding: 12 }} accent={C.gold}>
+          <Float amp={3}><LeagueEmblem tier={lg.idx} size={66} /></Float>
           <View style={{ flex: 1, marginHorizontal: 10 }}>
             <T s={`لیگ ${LEAGUE_FA[lg.name]}`} style={{ fontFamily: F.title, fontSize: 17, textAlign: 'right' }} />
             <View style={{ marginTop: 6 }}><Bar v={(p.trophies - lg.from) / (lg.to - lg.from)} color={C.gold} color2={C.orange} /></View>
@@ -76,7 +86,7 @@ function Profile({ top, bottom, toast }: { top: number; bottom: number; toast: (
       </Enter>
 
       <Enter i={2} style={{ paddingHorizontal: 16, marginTop: 10 }}>
-        <Panel style={{ flexDirection: 'row-reverse', alignItems: 'center', padding: 14 }}>
+        <Panel style={{ flexDirection: rowDir(), alignItems: 'center', padding: 14 }}>
           <Ring v={wr} />
           <View style={{ flex: 1, marginRight: 14 }}>
             <Row k="بهترین رکورد برد پیاپی" v={fa(p.bestStreak)} />
@@ -87,7 +97,7 @@ function Profile({ top, bottom, toast }: { top: number; bottom: number; toast: (
         </Panel>
       </Enter>
 
-      <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', paddingHorizontal: 12, marginTop: 6 }}>
+      <View style={{ flexDirection: rowDir(), flexWrap: 'wrap', paddingHorizontal: 12, marginTop: 6 }}>
         {stats.map(([img, k, v], i) => (
           <Enter key={k} i={i + 3} style={{ width: '33.33%', padding: 4 }}>
             <Panel style={{ alignItems: 'center', paddingVertical: 10 }} accent="transparent">
@@ -104,10 +114,10 @@ function Profile({ top, bottom, toast }: { top: number; bottom: number; toast: (
         const cur = Math.min(a.max, a.cur(p)), done = cur >= a.max, claimed = p.claimedAch.includes(a.id);
         return (
           <Enter key={a.id} i={i} style={{ paddingHorizontal: 16, marginBottom: 8 }}>
-            <Panel style={{ flexDirection: 'row-reverse', alignItems: 'center', padding: 10, opacity: claimed ? .6 : 1 }} accent={done && !claimed ? C.green : 'transparent'} glow={done && !claimed}>
+            <Panel style={{ flexDirection: rowDir(), alignItems: 'center', padding: 10, opacity: claimed ? .6 : 1 }} accent={done && !claimed ? C.green : 'transparent'} glow={done && !claimed}>
               <Img src={UI2[a.icon]} style={{ width: 50, height: 50 }} />
               <View style={{ flex: 1, marginHorizontal: 10 }}>
-                <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between' }}>
+                <View style={{ flexDirection: rowDir(), justifyContent: 'space-between' }}>
                   <T s={a.name} style={{ fontFamily: F.bold, fontSize: 13 }} />
                   <T s={`${fa(cur)}/${fa(a.max)}`} style={{ fontSize: 11, color: done ? C.green : C.dim }} />
                 </View>
@@ -129,7 +139,7 @@ function Profile({ top, bottom, toast }: { top: number; bottom: number; toast: (
 export default memo(Profile);
 
 const Row = ({ k, v }: { k: string; v: string }) => (
-  <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', paddingVertical: 4, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(255,255,255,.08)' }}>
+  <View style={{ flexDirection: rowDir(), justifyContent: 'space-between', paddingVertical: 4, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(255,255,255,.08)' }}>
     <T s={k} style={{ fontSize: 12, color: C.dim }} /><T s={v} style={{ fontFamily: F.bold, fontSize: 13 }} />
   </View>
 );
@@ -153,7 +163,7 @@ function Ring({ v }: { v: number }) {
 }
 
 const s = StyleSheet.create({
-  av: { width: 104, height: 104, borderRadius: 52, borderWidth: 3, borderColor: '#ff7bd5', alignItems: 'center', justifyContent: 'center', backgroundColor: '#050816' },
+  av: { width: 100, height: 100, borderRadius: 50, borderWidth: 3, borderColor: '#ff7ae0', alignItems: 'center', justifyContent: 'center', backgroundColor: '#050816' },
   lv: { position: 'absolute', bottom: 2, paddingHorizontal: 10, height: 22, borderRadius: 11, backgroundColor: C.gold, justifyContent: 'center' },
-  name: { color: C.text, fontFamily: F.title, fontSize: 20, textAlign: 'center', marginTop: 6, minWidth: 180, borderBottomWidth: 1, borderBottomColor: 'rgba(255,123,213,.4)', paddingVertical: 4 },
+  name: { color: C.text, fontFamily: F.title, fontSize: 18, minWidth: 120, borderBottomWidth: 1, borderBottomColor: 'rgba(255,123,213,.4)', paddingVertical: 4 },
 });

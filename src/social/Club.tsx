@@ -1,10 +1,11 @@
 // Club page: info, join / request / leave, members with roles (kick / promote / demote / transfer),
 // recruiting (join requests, invites), club chat and club-vs-club team challenges.
+import { xl } from '../i18n';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Btn, Img, Panel, Press, Segment, T } from '../ui/kit';
+import { Btn, Img, Panel, Press, Segment, T, rowDir, startAlign } from '../ui/kit';
 import { C, F, G, fa } from '../ui/theme';
 import { buzz, sfx } from '../sound';
 import { useAuth } from '../net/auth';
@@ -78,11 +79,11 @@ export default function Club({ id, onBack, onRoom, toast }: { id: string; onBack
         <View style={st.hero}>
           <LinearGradient colors={['rgba(255,170,60,.35)', 'rgba(8,12,34,.95)']} style={StyleSheet.absoluteFill} />
           <Img src={discImg(club.emblem)} style={{ width: 88, height: 88 }} />
-          <View style={{ flexDirection: 'row-reverse', alignItems: 'center', marginTop: S.s }}>
+          <View style={{ flexDirection: rowDir(), alignItems: 'center', marginTop: S.s }}>
             <T s={club.name} style={{ fontFamily: F.title, fontSize: 20 }} /><Badge label={club.tag} color={C.gold} />
           </View>
           {club.description ? <T s={club.description} style={{ fontSize: TS.small, color: '#d6e6ff', textAlign: 'center', marginTop: S.s, paddingHorizontal: S.l }} /> : null}
-          <View style={{ flexDirection: 'row-reverse', marginTop: S.m }}>
+          <View style={{ flexDirection: rowDir(), marginTop: S.m }}>
             {([['عضو', `${fa(club.members)}/${fa(club.max_members)}`], ['قدرت', fa(club.power)], ['حداقل سطح', fa(club.min_level)]] as const).map(([l, v]) => (
               <View key={l} style={{ alignItems: 'center', width: 90 }}><T s={v} style={{ fontFamily: F.title, fontSize: 15 }} /><T s={l} style={{ fontSize: TS.tiny, color: C.dim }} /></View>
             ))}
@@ -91,7 +92,7 @@ export default function Club({ id, onBack, onRoom, toast }: { id: string; onBack
         </View>
 
         {mine ? (
-          <View style={{ flexDirection: 'row-reverse', marginTop: S.m }}>
+          <View style={{ flexDirection: rowDir(), marginTop: S.m }}>
             <Btn label="گفتگوی باشگاه" small colors={G.primary} onPress={() => club.conversation_id && nav.openChat(club.conversation_id)} style={{ flex: 1, marginLeft: S.s }} />
             <Btn label={busy === 'leave' ? '…' : 'ترک باشگاه'} small colors={G.dark} onPress={() => run('leave', () => rpc('leave_club'), 'از باشگاه خارج شدی')} style={{ flex: 1 }} />
           </View>
@@ -117,7 +118,7 @@ export default function Club({ id, onBack, onRoom, toast }: { id: string; onBack
               <Press key={m.user_id} onPress={() => nav.openProfile(m.user_id)} scaleTo={.98}>
                 <View style={st.row}>
                   <Avatar avatar={m.profiles?.equipped_disc || m.profiles?.avatar} url={m.profiles?.avatar_url} size={40} ring={isOnline(m.profiles?.online_at) ? C.green : C.line} />
-                  <View style={{ flex: 1, marginRight: S.s, alignItems: 'flex-end' }}>
+                  <View style={{ flex: 1, marginRight: S.s, alignItems: startAlign() }}>
                     <T s={m.profiles?.username || '…'} n={1} style={{ fontFamily: F.bold, fontSize: TS.small }} />
                     <T s={`سطح ${fa(m.profiles?.level ?? 1)} · امتیاز ${fa(m.profiles?.rating ?? 0)}`} style={{ fontSize: TS.tiny, color: C.dim }} />
                   </View>
@@ -136,7 +137,7 @@ export default function Club({ id, onBack, onRoom, toast }: { id: string; onBack
               reqs.length ? reqs.map(r => (
                 <View key={r.user_id} style={st.row}>
                   <Avatar avatar={r.profiles?.avatar} url={r.profiles?.avatar_url} size={40} />
-                  <View style={{ flex: 1, marginRight: S.s, alignItems: 'flex-end' }}>
+                  <View style={{ flex: 1, marginRight: S.s, alignItems: startAlign() }}>
                     <T s={r.profiles?.username || '…'} style={{ fontFamily: F.bold, fontSize: TS.small }} />
                     {r.message ? <T s={r.message} n={1} style={{ fontSize: TS.tiny, color: C.dim }} /> : null}
                   </View>
@@ -150,7 +151,7 @@ export default function Club({ id, onBack, onRoom, toast }: { id: string; onBack
                 <Panel style={{ padding: S.m, marginBottom: S.m }} accent="transparent">
                   <T s="به یک باشگاه دیگر چالش بده" style={{ fontFamily: F.bold, fontSize: TS.small, textAlign: 'right', marginBottom: S.s }} />
                   <Segment value={mode} onChange={setMode} items={[['1v1', '۱ به ۱'], ['2v2', '۲ به ۲'], ['3v3', '۳ به ۳']]} accent={C.red} />
-                  <View style={{ marginTop: S.s }}><Field value={q} onChangeText={setQ} placeholder="نام یا تگ باشگاه…" /></View>
+                  <View style={{ marginTop: S.s }}><Field value={q} onChangeText={setQ} placeholder={xl("نام یا تگ باشگاه…")} /></View>
                   {found.map(c => (
                     <View key={c.id} style={st.row}>
                       <Img src={discImg(c.emblem)} style={{ width: 36, height: 36 }} />
@@ -166,7 +167,7 @@ export default function Club({ id, onBack, onRoom, toast }: { id: string; onBack
                 return (
                   <View key={c.id} style={st.row}>
                     <Img src={discImg(other?.emblem)} style={{ width: 36, height: 36 }} />
-                    <View style={{ flex: 1, marginRight: S.s, alignItems: 'flex-end' }}>
+                    <View style={{ flex: 1, marginRight: S.s, alignItems: startAlign() }}>
                       <T s={`${incoming ? 'از' : 'به'} [${other?.tag}] ${other?.name} · ${c.mode}`} n={1} style={{ fontFamily: F.bold, fontSize: TS.small }} />
                       <T s={c.status === 'pending' ? 'در انتظار' : c.status === 'accepted' ? `پذیرفته شد · کد ${c.room_code}` : c.status === 'declined' ? 'رد شد' : 'لغو شد'} style={{ fontSize: TS.tiny, color: c.status === 'accepted' ? C.green : C.dim }} />
                     </View>

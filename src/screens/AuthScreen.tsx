@@ -1,12 +1,13 @@
 // Full-screen account gate: sign up (username + e-mail + password) / sign in / forgot password,
 // plus "continue as guest". Shown once after the intro for players without an e-mail account, and
 // reachable any time from the Profile tab, the HUD avatar and Settings.
+import { xl } from '../i18n';
 import React, { useEffect, useRef, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { UI2 } from '../game/assets';
-import { Btn, Img, Panel, Press, Segment, T } from '../ui/kit';
+import { Btn, Img, Panel, Press, Segment, T, rowDir, startAlign } from '../ui/kit';
 import Space from '../ui/Space';
 import { C, F, G } from '../ui/theme';
 import { buzz } from '../sound';
@@ -87,8 +88,8 @@ export default function AuthScreen({ onClose, toast, initial = 'up' }: { onClose
       <Space theme="portal" dim={.12} stars={false} />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={{ paddingTop: ins.top + S.l, paddingBottom: ins.bottom + S.xl, paddingHorizontal: S.l }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-          <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center' }}>
-            <View style={{ alignItems: 'flex-end' }}>
+          <View style={{ flexDirection: rowDir(), justifyContent: 'space-between', alignItems: 'center' }}>
+            <View style={{ alignItems: startAlign() }}>
               <T s="NEXORA ACCOUNT" style={{ fontFamily: F.head, fontSize: 10, letterSpacing: 3, color: C.cyan }} />
               <T s={signedEmail ? 'حساب تو' : mode === 'in' ? 'ورود به حساب' : mode === 'forgot' ? 'بازیابی رمز عبور' : 'ساخت حساب جدید'} style={{ fontFamily: F.title, fontSize: 24, marginTop: 2 }} />
             </View>
@@ -115,14 +116,14 @@ export default function AuthScreen({ onClose, toast, initial = 'up' }: { onClose
               ) : null}
               <View style={{ height: S.m }} />
               {mode === 'up' ? (
-                <Field label="نام کاربری" placeholder="مثلاً NexoraKing" value={name} onChangeText={t => { setName(t); setErrs(e => ({ ...e, name: null })); }} maxLength={20} autoCapitalize="none" autoCorrect={false}
+                <Field label="نام کاربری" placeholder={xl("مثلاً NexoraKing")} value={name} onChangeText={t => { setName(t); setErrs(e => ({ ...e, name: null })); }} maxLength={20} autoCapitalize="none" autoCorrect={false}
                   error={errs.name || (nameFree === false ? 'این نام کاربری قبلاً گرفته شده' : null)} />
               ) : null}
               {mode === 'up' && nameFree && nameOk(name) && !errs.name ? <T s="✓ این نام آزاد است" style={{ color: C.green, fontSize: TS.cap, textAlign: 'right', marginTop: -S.s, marginBottom: S.s }} /> : null}
               <Field label="ایمیل" placeholder="you@example.com" value={email} onChangeText={t => { setEmail(t); setErrs(e => ({ ...e, email: null })); }} keyboardType="email-address" autoCapitalize="none" autoCorrect={false}
                 autoComplete="email" textContentType="emailAddress" style={pwStyle} error={errs.email} />
               {mode !== 'forgot' ? (
-                <Field label="رمز عبور" placeholder="حداقل ۶ کاراکتر" value={pass} onChangeText={t => { setPass(t); setErrs(e => ({ ...e, pass: null })); }} secureTextEntry={!show} autoCapitalize="none" autoCorrect={false}
+                <Field label="رمز عبور" placeholder={xl("حداقل ۶ کاراکتر")} value={pass} onChangeText={t => { setPass(t); setErrs(e => ({ ...e, pass: null })); }} secureTextEntry={!show} autoCapitalize="none" autoCorrect={false}
                   textContentType={mode === 'up' ? 'newPassword' : 'password'} style={pwStyle} error={errs.pass} />
               ) : null}
               {mode === 'up' ? (
@@ -137,7 +138,7 @@ export default function AuthScreen({ onClose, toast, initial = 'up' }: { onClose
               {info ? <View style={s.info}><T s={info} style={{ fontSize: TS.small, textAlign: 'right', lineHeight: 22 }} /></View> : null}
               <Btn label={busy ? 'لطفاً صبر کن…' : mode === 'up' ? (a.isGuest ? 'ثبت‌نام و حفظ پیشرفت' : 'ساخت حساب') : mode === 'in' ? 'ورود' : 'ارسال لینک بازیابی'}
                 onPress={submit} disabled={busy} colors={mode === 'in' ? G.primary : mode === 'up' ? G.green : G.violet} style={{ marginTop: S.m }} />
-              <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', marginTop: S.m }}>
+              <View style={{ flexDirection: rowDir(), justifyContent: 'space-between', marginTop: S.m }}>
                 {mode === 'forgot' ? (
                   <Press onPress={() => { setMode('in'); setErr(null); setInfo(null); }} style={s.link}><T s="بازگشت به ورود" style={{ color: C.cyan, fontSize: TS.small }} /></Press>
                 ) : mode === 'in' ? (<>
