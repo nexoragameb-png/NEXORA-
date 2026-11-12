@@ -2,7 +2,8 @@ name: Android APK
 
 on:
   push:
-    branches: [main]
+    branches: [main, menu-rebuild-v3]
+    paths-ignore: ['**.md', 'docs/**']
   workflow_dispatch:
 
 permissions:
@@ -56,15 +57,51 @@ jobs:
             echo "reactNativeArchitectures=arm64-v8a,armeabi-v7a"
           } >> android/gradle.properties
 
-      - name: Build release APK (signed with the debug keystore — for testing)
-        working-directory: android
-        run: ./gradlew assembleRelease --no-daemon --stacktrace
+      # Optional real release signing. Add these repository secrets to sign with your own upload key:
+      #   ANDROID_KEYSTORE_BASE64 (base64 of the .jks), ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD
+      # Without them the release build is signed with the debug keystore (installable for testing, not for Play upload).
+      - name: Release signing (only when secrets are configured)
+        env:
+          KS_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -z "$KS_B64" ]; then echo "No signing secrets: using the debug keystore"; echo "SIGNED=debug" >> $GITHUB_ENV; exit 0; fi
+          echo "$KS_B64" | base64 -d > android/app/upload.jks
+          {
+            echo "NEXORA_UPLOAD_STORE_FILE=upload.jks"
+            echo "NEXORA_UPLOAD_STORE_PASSWORD=$KS_PASS"
+            echo "NEXORA_UPLOAD_KEY_ALIAS=$KEY_ALIAS"
+            echo "NEXORA_UPLOAD_KEY_PASSWORD=$KEY_PASS"
+          } >> android/gradle.properties
+          cat >> android/app/build.gradle <<'GRADLE'
 
-      - name: Rename APK
+          android {
+              signingConfigs {
+                  upload {
+                      storeFile file(NEXORA_UPLOAD_STORE_FILE)
+                      storePassword NEXORA_UPLOAD_STORE_PASSWORD
+                      keyAlias NEXORA_UPLOAD_KEY_ALIAS
+                      keyPassword NEXORA_UPLOAD_KEY_PASSWORD
+                  }
+              }
+              buildTypes { release { signingConfig signingConfigs.upload } }
+          }
+          GRADLE
+          echo "SIGNED=upload" >> $GITHUB_ENV
+
+      - name: Build release APK + AAB
+        working-directory: android
+        run: ./gradlew assembleRelease bundleRelease --no-daemon --stacktrace
+
+      - name: Collect outputs
         run: |
           mkdir -p dist-apk
           cp android/app/build/outputs/apk/release/*.apk "dist-apk/nexora-${{ github.run_number }}.apk"
+          cp android/app/build/outputs/bundle/release/*.aab "dist-apk/nexora-${{ github.run_number }}.aab"
           ls -la dist-apk
+          echo "Signed with: ${SIGNED:-debug}"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -72,7 +109,14 @@ jobs:
           path: dist-apk/*.apk
           if-no-files-found: error
 
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nexora-aab
+          path: dist-apk/*.aab
+          if-no-files-found: error
+
       - name: Publish GitHub Release
+        if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: build-${{ github.run_number }}
@@ -81,5 +125,7 @@ jobs:
             Test build of NEXORA (release APK signed with the debug keystore).
             Commit: ${{ github.sha }}
             Install: download the APK on your Android phone and allow "install unknown apps".
-          files: dist-apk/*.apk
+          files: |
+            dist-apk/*.apk
+            dist-apk/*.aab
           make_latest: true

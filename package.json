@@ -1,6 +1,6 @@
 {
   "name": "nexora",
-  "version": "2.0.1",
+  "version": "3.0.0",
   "main": "index.ts",
   "dependencies": {
     "@config-plugins/react-native-webrtc": "^15.0.2",
