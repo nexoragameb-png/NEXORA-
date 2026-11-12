@@ -37,10 +37,30 @@ export function xl(s: string): string {
     const key = s.replace(DIG, m => { nums.push(toLatin(m)); return `{${nums.length - 1}}`; });
     const tpl = EN[key];
     if (tpl !== undefined) out = tpl.replace(/\{(\d+)\}/g, (_, i) => nums[+i] ?? '');
-    else out = translateParts(s);
+    else out = matchTemplate(s) ?? translateParts(s);
   }
   if (cache.size > 4000) cache.clear();
   cache.set(s, out); return out;
+}
+
+// templates whose placeholders hold text (names, labels): "{0} باز شد!" ← "Barcelona باز شد!"
+let TPL: [RegExp, string, number[]][] | null = null;
+function matchTemplate(s: string): string | null {
+  if (!TPL) {
+    TPL = [];
+    for (const k in EN) {
+      if (!k.includes('{0}')) continue;
+      const order: number[] = [];
+      const src = k.replace(/[.*+?^$()|[\]\\]/g, '\\$&').replace(/\{(\d+)\}/g, (_, i) => { order.push(+i); return '(.+?)'; });
+      try { TPL.push([new RegExp('^' + src + '$'), EN[k], order]); } catch { }
+    }
+  }
+  for (const [rx, en, order] of TPL) {
+    const m = rx.exec(s); if (!m) continue;
+    const vals: Record<number, string> = {}; order.forEach((ix, j) => { const v = m[j + 1]; vals[ix] = FA_RX.test(v) ? xl(v) : toLatin(v); });
+    return en.replace(/\{(\d+)\}/g, (_, i) => vals[+i] ?? '');
+  }
+  return null;
 }
 
 // fall back to translating " · "-separated parts on their own (lots of strings are built like "a · b")

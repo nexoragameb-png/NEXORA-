@@ -1,5 +1,6 @@
 // Account section (Settings): guest / e-mail status, sign up, sign in, guest→email upgrade,
 // forgot password, sign out, change username. Plus the password-recovery modal opened by e-mail links.
+import { xl } from '../i18n';
 import React, { useState } from 'react';
 import { View } from 'react-native';
 import { UI2 } from '../game/assets';
@@ -103,9 +104,9 @@ export default function Account({ toast }: { toast: (m: string, k?: string) => v
           <T s={mode === 'up' ? (a.isGuest ? 'با ثبت ایمیل، پیشرفت حساب مهمان حفظ می‌شود و روی هر گوشی وارد می‌شوی.' : 'حساب بساز تا پیشرفتت روی سرور ذخیره شود.')
             : mode === 'in' ? (a.isGuest ? 'ورود به حساب دیگر، حساب مهمان فعلی را کنار می‌گذارد.' : 'با ایمیل و رمز وارد شو.') : 'ایمیلت را وارد کن تا لینک تغییر رمز برایت ارسال شود.'}
             style={{ fontSize: TS.cap, color: C.dim, textAlign: 'right', marginVertical: S.s, lineHeight: 18 }} />
-          <Field placeholder="ایمیل" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" autoComplete="email" textContentType="emailAddress" style={{ textAlign: 'left', writingDirection: 'ltr' }} />
-          {mode !== 'forgot' ? <Field placeholder="رمز عبور" value={pass} onChangeText={setPass} secureTextEntry autoCapitalize="none" textContentType={mode === 'up' ? 'newPassword' : 'password'} style={{ textAlign: 'left', writingDirection: 'ltr' }} /> : null}
-          {mode === 'up' ? <Field placeholder="تکرار رمز عبور" value={pass2} onChangeText={setPass2} secureTextEntry autoCapitalize="none" style={{ textAlign: 'left', writingDirection: 'ltr' }} /> : null}
+          <Field placeholder={xl("ایمیل")} value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" autoComplete="email" textContentType="emailAddress" style={{ textAlign: 'left', writingDirection: 'ltr' }} />
+          {mode !== 'forgot' ? <Field placeholder={xl("رمز عبور")} value={pass} onChangeText={setPass} secureTextEntry autoCapitalize="none" textContentType={mode === 'up' ? 'newPassword' : 'password'} style={{ textAlign: 'left', writingDirection: 'ltr' }} /> : null}
+          {mode === 'up' ? <Field placeholder={xl("تکرار رمز عبور")} value={pass2} onChangeText={setPass2} secureTextEntry autoCapitalize="none" style={{ textAlign: 'left', writingDirection: 'ltr' }} /> : null}
           {err ? <T s={err} style={{ color: C.red, fontSize: TS.small, textAlign: 'right', marginBottom: S.s }} /> : null}
           <Btn label={busy ? 'لطفاً صبر کن…' : mode === 'up' ? (a.isGuest ? 'ثبت ایمیل و حفظ پیشرفت' : 'ساخت حساب') : mode === 'in' ? 'ورود' : 'ارسال لینک'} small onPress={submit} disabled={busy} colors={mode === 'in' ? G.primary : G.green} />
           {!a.uid ? <Btn label="ادامه به‌عنوان مهمان" small colors={G.dark} style={{ marginTop: S.s }} onPress={async () => { setBusy(true); try { await a.ensure(); toast('به‌عنوان مهمان وارد شدی', 'ok'); } catch { toast('اتصال برقرار نشد', 'err'); } finally { setBusy(false); } }} /> : null}
@@ -133,8 +134,8 @@ export function RecoveryModal({ toast }: { toast: (m: string, k?: string) => voi
     <Modal onClose={a.endRecovery} accent={C.cyan}>
       <View style={{ padding: S.l }}>
         <T s="رمز عبور جدید" style={{ fontFamily: F.title, fontSize: 20, textAlign: 'center', marginBottom: S.m }} />
-        <Field placeholder="رمز جدید" value={p1} onChangeText={setP1} secureTextEntry autoCapitalize="none" style={{ textAlign: 'left', writingDirection: 'ltr' }} />
-        <Field placeholder="تکرار رمز جدید" value={p2} onChangeText={setP2} secureTextEntry autoCapitalize="none" style={{ textAlign: 'left', writingDirection: 'ltr' }} />
+        <Field placeholder={xl("رمز جدید")} value={p1} onChangeText={setP1} secureTextEntry autoCapitalize="none" style={{ textAlign: 'left', writingDirection: 'ltr' }} />
+        <Field placeholder={xl("تکرار رمز جدید")} value={p2} onChangeText={setP2} secureTextEntry autoCapitalize="none" style={{ textAlign: 'left', writingDirection: 'ltr' }} />
         {err ? <T s={err} style={{ color: C.red, fontSize: TS.small, textAlign: 'right', marginBottom: S.s }} /> : null}
         <Btn label={busy ? '…' : 'ذخیره'} onPress={save} disabled={busy} />
         <Btn label="بعداً" small colors={G.dark} onPress={a.endRecovery} style={{ marginTop: S.s }} />

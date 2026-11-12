@@ -1,4 +1,5 @@
 // Social tab: messages (inbox + user search + discover groups/channels), clubs, friends (following/followers).
+import { xl } from '../i18n';
 import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { FlatList, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { UI2 } from '../game/assets';
@@ -81,7 +82,7 @@ function Messages({ bottom, toast }: { bottom: number; toast: (m: string, k?: st
 
   const header = (
     <View style={{ paddingHorizontal: S.l }}>
-      <Field value={q} onChangeText={setQ} placeholder="جستجوی بازیکن با نام کاربری…" autoCapitalize="none" />
+      <Field value={q} onChangeText={setQ} placeholder={xl("جستجوی بازیکن با نام کاربری…")} autoCapitalize="none" />
       {found ? (
         <View style={{ marginBottom: S.m }}>
           {found.length ? found.map(p => (
@@ -211,7 +212,7 @@ function Clubs({ bottom, toast }: { bottom: number; toast: (m: string, k?: strin
           <View style={{ paddingHorizontal: S.l }}>
             {profile?.club_id ? <Btn label="باشگاه من" colors={G.gold} small onPress={() => nav.openClub(profile.club_id!)} style={{ marginBottom: S.s }} />
               : <Btn label="ساخت باشگاه (۵۰ الماس)" colors={G.green} small onPress={() => setSheet(true)} style={{ marginBottom: S.s }} />}
-            <Field value={q} onChangeText={setQ} placeholder="جستجوی نام یا تگ باشگاه…" autoCapitalize="characters" />
+            <Field value={q} onChangeText={setQ} placeholder={xl("جستجوی نام یا تگ باشگاه…")} autoCapitalize="characters" />
             <T s="برترین باشگاه‌ها" style={{ fontFamily: F.bold, fontSize: TS.h, textAlign: 'right', marginBottom: S.s }} />
           </View>}
         renderItem={({ item, index }) => (

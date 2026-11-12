@@ -1,4 +1,5 @@
 // Tournaments: list (registration / running / finished), create, detail with bracket or standings, live updates.
+import { xl } from '../i18n';
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FlatList, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -104,7 +105,7 @@ function CreateTournament({ toast, onDone }: { toast: (m: string, k?: string) =>
   };
   return (
     <ScrollView contentContainerStyle={{ padding: S.l, paddingBottom: S.xl * 2 }} keyboardShouldPersistTaps="handled">
-      <Field label="نام تورنمنت" value={name} onChangeText={setName} maxLength={40} placeholder="جام کهکشان" />
+      <Field label="نام تورنمنت" value={name} onChangeText={setName} maxLength={40} placeholder={xl("جام کهکشان")} />
       <T s="فرمت" style={st.lbl} />
       <View style={{ flexDirection: rowDir(), flexWrap: 'wrap', gap: S.s }}>
         {(Object.keys(FORMAT_FA) as Format[]).filter(f => f !== 'world_cup').map(f => (

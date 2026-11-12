@@ -1,6 +1,7 @@
 // Full-screen account gate: sign up (username + e-mail + password) / sign in / forgot password,
 // plus "continue as guest". Shown once after the intro for players without an e-mail account, and
 // reachable any time from the Profile tab, the HUD avatar and Settings.
+import { xl } from '../i18n';
 import React, { useEffect, useRef, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -115,14 +116,14 @@ export default function AuthScreen({ onClose, toast, initial = 'up' }: { onClose
               ) : null}
               <View style={{ height: S.m }} />
               {mode === 'up' ? (
-                <Field label="نام کاربری" placeholder="مثلاً NexoraKing" value={name} onChangeText={t => { setName(t); setErrs(e => ({ ...e, name: null })); }} maxLength={20} autoCapitalize="none" autoCorrect={false}
+                <Field label="نام کاربری" placeholder={xl("مثلاً NexoraKing")} value={name} onChangeText={t => { setName(t); setErrs(e => ({ ...e, name: null })); }} maxLength={20} autoCapitalize="none" autoCorrect={false}
                   error={errs.name || (nameFree === false ? 'این نام کاربری قبلاً گرفته شده' : null)} />
               ) : null}
               {mode === 'up' && nameFree && nameOk(name) && !errs.name ? <T s="✓ این نام آزاد است" style={{ color: C.green, fontSize: TS.cap, textAlign: 'right', marginTop: -S.s, marginBottom: S.s }} /> : null}
               <Field label="ایمیل" placeholder="you@example.com" value={email} onChangeText={t => { setEmail(t); setErrs(e => ({ ...e, email: null })); }} keyboardType="email-address" autoCapitalize="none" autoCorrect={false}
                 autoComplete="email" textContentType="emailAddress" style={pwStyle} error={errs.email} />
               {mode !== 'forgot' ? (
-                <Field label="رمز عبور" placeholder="حداقل ۶ کاراکتر" value={pass} onChangeText={t => { setPass(t); setErrs(e => ({ ...e, pass: null })); }} secureTextEntry={!show} autoCapitalize="none" autoCorrect={false}
+                <Field label="رمز عبور" placeholder={xl("حداقل ۶ کاراکتر")} value={pass} onChangeText={t => { setPass(t); setErrs(e => ({ ...e, pass: null })); }} secureTextEntry={!show} autoCapitalize="none" autoCorrect={false}
                   textContentType={mode === 'up' ? 'newPassword' : 'password'} style={pwStyle} error={errs.pass} />
               ) : null}
               {mode === 'up' ? (

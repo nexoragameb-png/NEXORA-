@@ -1,4 +1,5 @@
 // Online hub: profile strip, quick match, create / join by code, live room list.
+import { xl } from '../i18n';
 import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { FlatList, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -127,7 +128,7 @@ export default function Hub({ onBack, onRoom, onNav, toast }: Props) {
       <View style={{ flexDirection: rowDir(), paddingHorizontal: S.l, marginTop: S.m, alignItems: 'flex-start' }}>
         <Btn label="ساخت اتاق" small onPress={() => setSheet(true)} colors={G.green} style={{ width: 128, marginLeft: S.s }} />
         <View style={{ flex: 1, flexDirection: rowDir() }}>
-          <Field value={code} onChangeText={v => setCode(v.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 6))} placeholder="کد ۶ رقمی" autoCapitalize="characters"
+          <Field value={code} onChangeText={v => setCode(v.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 6))} placeholder={xl("کد ۶ رقمی")} autoCapitalize="characters"
             maxLength={6} style={{ height: 44, textAlign: 'center', letterSpacing: 2, fontFamily: F.head }} onSubmitEditing={joinCode} returnKeyType="go" />
         </View>
         <Press onPress={joinCode} style={s.go} disabled={busy === 'code'}><T s="ورود" style={{ fontFamily: F.bold, fontSize: TS.small }} /></Press>
@@ -219,7 +220,7 @@ function CreateRoom({ onCreate, busy }: { onCreate: (a: any) => void; busy: bool
   );
   return (
     <ScrollView contentContainerStyle={{ padding: S.l, paddingBottom: S.xl * 2 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-      <Field label="نام اتاق" value={name} onChangeText={setName} placeholder="مثلاً: فینال کهکشانی" maxLength={40} />
+      <Field label="نام اتاق" value={name} onChangeText={setName} placeholder={xl("مثلاً: فینال کهکشانی")} maxLength={40} />
       <T s="حالت" style={s.lbl} />
       <Segment value={mode} onChange={setMode} items={MODES.map(m => [m, MODE_FA[m]])} />
       <T s="قانون" style={s.lbl} />

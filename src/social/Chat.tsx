@@ -1,4 +1,5 @@
 // Conversation screen: DM / group / channel / club chat with realtime messages, image upload, read receipts, mute/leave.
+import { xl } from '../i18n';
 import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { FlatList, KeyboardAvoidingView, Platform, StyleSheet, TextInput, View } from 'react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
@@ -104,7 +105,7 @@ export default function Chat({ id, onBack, toast }: { id: string; onBack: () => 
           : !canPost ? <T s="فقط مدیران کانال می‌توانند پیام بفرستند" style={{ flex: 1, textAlign: 'center', color: C.dim, fontSize: TS.small, paddingVertical: S.m }} /> : (
             <>
               <Press onPress={sendText} disabled={!text.trim() || sending} style={[st.send, !text.trim() && { opacity: .4 }]}><T s="➤" style={{ fontSize: 18, color: '#fff', transform: [{ scaleX: -1 }] }} /></Press>
-              <TextInput value={text} onChangeText={setText} placeholder="پیام…" placeholderTextColor={C.dim2} style={st.input} multiline maxLength={2000} textAlign="right" />
+              <TextInput value={text} onChangeText={setText} placeholder={xl("پیام…")} placeholderTextColor={C.dim2} style={st.input} multiline maxLength={2000} textAlign="right" />
               <Press onPress={sendImage} style={st.icon}><Img src={UI2.c_gift} style={{ width: 26, height: 26 }} /></Press>
             </>
           )}

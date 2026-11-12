@@ -1,5 +1,6 @@
 // Club page: info, join / request / leave, members with roles (kick / promote / demote / transfer),
 // recruiting (join requests, invites), club chat and club-vs-club team challenges.
+import { xl } from '../i18n';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -150,7 +151,7 @@ export default function Club({ id, onBack, onRoom, toast }: { id: string; onBack
                 <Panel style={{ padding: S.m, marginBottom: S.m }} accent="transparent">
                   <T s="به یک باشگاه دیگر چالش بده" style={{ fontFamily: F.bold, fontSize: TS.small, textAlign: 'right', marginBottom: S.s }} />
                   <Segment value={mode} onChange={setMode} items={[['1v1', '۱ به ۱'], ['2v2', '۲ به ۲'], ['3v3', '۳ به ۳']]} accent={C.red} />
-                  <View style={{ marginTop: S.s }}><Field value={q} onChangeText={setQ} placeholder="نام یا تگ باشگاه…" /></View>
+                  <View style={{ marginTop: S.s }}><Field value={q} onChangeText={setQ} placeholder={xl("نام یا تگ باشگاه…")} /></View>
                   {found.map(c => (
                     <View key={c.id} style={st.row}>
                       <Img src={discImg(c.emblem)} style={{ width: 36, height: 36 }} />
