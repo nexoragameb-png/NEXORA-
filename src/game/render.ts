@@ -30,8 +30,8 @@ half4 main(float2 p){
 const ballFx = Skia.RuntimeEffect.Make(BALL_SKSL)!;
 
 const col = (c: string, a = 1) => { const k = Skia.Color(c); return Float32Array.from([k[0], k[1], k[2], k[3] * a]); };
-const TEAM_RING = [['#1d4bff', '#8fe6ff', '#2e7bff', '#c9f4ff', '#1d4bff'], ['#ff2b4a', '#ffc08a', '#d81b3c', '#ffe1c4', '#ff2b4a']];
-const TEAM_GLOW = ['#3bb6ff', '#ff5b6b'];
+const TEAM_GLOW = ['#36c8ff', '#ff3d6e'];
+const TEAM_HI = ['#c8f3ff', '#ffd0dc'];
 
 export type Images = { field: SkImage | null; goal: SkImage | null; ball: SkImage | null; t0: SkImage | null; t1: SkImage | null };
 export type View = { W: number; H: number; s: number; ox: number; oy: number };
@@ -96,16 +96,14 @@ function sprites(team: 0 | 1, logo: SkImage | null) {
   const key = logo || team; const hit = sprCache.get(key); if (hit) return hit;
   const R = SPR / 2, r = R - 2;
   const disc = makeImg(SPR, SPR, c => {
-    const ring = P(); ring.setShader(Skia.Shader.MakeSweepGradient(R, R, TEAM_RING[team].map(s => col(s)), null, TileMode.Clamp));
-    c.drawCircle(R, R, r, ring);
+    // v3: no solid red/blue team disc underneath any more: the metallic art fills the piece and the
+    // team reads from the neon ring drawn around it (see ringSprite / drawPiece)
     if (logo) {
-      // v2.0.1 metallic NX discs: the art already carries its own rim + lighting, so it fills the piece;
-      // a thin team-coloured ring (blue / red) keeps the two sides readable at a glance.
-      const dk = P(); dk.setColor(col('#050816')); c.drawCircle(R, R, r * .9, dk);
-      c.drawImageRectOptions(logo, Skia.XYWHRect(0, 0, logo.width(), logo.height()), Skia.XYWHRect(R - r * .93, R - r * .93, r * 1.86, r * 1.86), FilterMode.Linear, MipmapMode.Linear, null);
+      const dk = P(); dk.setColor(col('#050816')); c.drawCircle(R, R, r * .97, dk);
+      c.drawImageRectOptions(logo, Skia.XYWHRect(0, 0, logo.width(), logo.height()), Skia.XYWHRect(R - r, R - r, r * 2, r * 2), FilterMode.Linear, MipmapMode.Linear, null);
     } else {
-      const dk = P(); dk.setColor(col('#050816')); c.drawCircle(R, R, r * .87, dk);
-      const edge = P(); edge.setStyle(PaintStyle.Stroke); edge.setStrokeWidth(3); edge.setColor(col('#000000', .35)); c.drawCircle(R, R, r * .87, edge);
+      const dk = P(); dk.setShader(Skia.Shader.MakeRadialGradient({ x: R - r * .3, y: R - r * .35 }, r * 1.2, [col('#3a4468'), col('#0b0f24')], null, TileMode.Clamp)); c.drawCircle(R, R, r * .97, dk);
+      const edge = P(); edge.setStyle(PaintStyle.Stroke); edge.setStrokeWidth(4); edge.setColor(col(TEAM_GLOW[team], .9)); c.drawCircle(R, R, r * .8, edge);
     }
   })!;
   const gloss = makeImg(SPR, SPR, c => {
@@ -128,23 +126,49 @@ function drawShadowFast(c: SkCanvas, x: number, y: number, r: number, a: number)
   c.drawImageRectOptions(s, Skia.XYWHRect(0, 0, 128, 128), Skia.XYWHRect(x + r * .14 - R, y + r * .26 - R, 2 * R, 2 * R), FilterMode.Linear, MipmapMode.None, shPaint);
 }
 
-function drawPiece(c: SkCanvas, e: Engine, b: Body, x: number, y: number, img: SkImage | null, t: number, active: boolean, dark: boolean) {
+// team-tinted neon ring (pre-rendered once per team: blurred halo + crisp double line + tick marks)
+const RS = 256, ringCache: (SkImage | null)[] = [null, null];
+function ringSprite(team: 0 | 1) {
+  if (ringCache[team]) return ringCache[team];
+  const R = RS / 2, rr = R * .78; // ring radius inside the sprite; maps to piece r + 5
+  ringCache[team] = makeImg(RS, RS, c => {
+    const g = P(); g.setStyle(PaintStyle.Stroke); g.setStrokeWidth(16); g.setColor(col(TEAM_GLOW[team], .45)); g.setMaskFilter(Skia.MaskFilter.MakeBlur(BlurStyle.Normal, 9, true)); c.drawCircle(R, R, rr, g);
+    const l = P(); l.setStyle(PaintStyle.Stroke); l.setStrokeWidth(5); l.setShader(Skia.Shader.MakeSweepGradient(R, R, [col(TEAM_GLOW[team]), col(TEAM_HI[team]), col(TEAM_GLOW[team]), col(TEAM_HI[team]), col(TEAM_GLOW[team])], null, TileMode.Clamp)); c.drawCircle(R, R, rr, l);
+    const t = P(); t.setStyle(PaintStyle.Stroke); t.setStrokeWidth(1.6); t.setColor(col(TEAM_HI[team], .55)); c.drawCircle(R, R, rr + 9, t);
+    const k = P(); k.setStyle(PaintStyle.Stroke); k.setStrokeWidth(3); k.setStrokeCap(StrokeCap.Round); k.setColor(col('#ffffff', .8));
+    for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2 + Math.PI / 4; c.drawLine(R + Math.cos(a) * (rr + 6), R + Math.sin(a) * (rr + 6), R + Math.cos(a) * (rr + 12), R + Math.sin(a) * (rr + 12), k); }
+  });
+  return ringCache[team];
+}
+const ringPaint = (() => { const p = P(); p.setBlendMode(BlendMode.Plus); return p; })();
+const arcPaint = (() => { const p = P(); p.setStyle(PaintStyle.Stroke); p.setStrokeCap(StrokeCap.Round); p.setBlendMode(BlendMode.Plus); return p; })();
+
+function drawPiece(c: SkCanvas, e: Engine, b: Body, x: number, y: number, img: SkImage | null, t: number, active: boolean, dark: boolean, held: boolean) {
   const team = b.team as 0 | 1, sc = 1 + b.sq * .07, r = b.r * sc;
   drawShadowFast(c, x, y, r, .5);
   if (b.tr.length > 1) {
     const ap = paints.add;
     for (let i = 0; i < b.tr.length; i++) { const q = b.tr[i], k = (i + 1) / b.tr.length; ap.setColor(col(TEAM_GLOW[team], .08 * k)); c.drawCircle(q.x, q.y, r * (.6 + .35 * k), ap); }
   }
-  if (active) {
-    const pulse = .55 + .45 * Math.sin(t * 5.5), g = paints.add2;
-    g.setStrokeWidth(14); g.setColor(col(TEAM_GLOW[team], .16 + .12 * pulse)); c.drawCircle(x, y, r + 8 + pulse * 3, g);
-    g.setStrokeWidth(3.5); g.setColor(col(TEAM_GLOW[team], .6 + .35 * pulse)); c.drawCircle(x, y, r + 7 + pulse * 3, g);
+  // neon team ring: dimmer for the side that is waiting, breathing for the side to move
+  const rs = ringSprite(team);
+  if (rs) {
+    const pulse = active ? .5 + .5 * Math.sin(t * 4.2) : 0, rr = (r + 5 + pulse * 1.5) / .78;
+    ringPaint.setAlphaf(dark ? .45 : active ? .8 + .2 * pulse : .75);
+    c.drawImageRectOptions(rs, Skia.XYWHRect(0, 0, RS, RS), Skia.XYWHRect(x - rr, y - rr, 2 * rr, 2 * rr), FilterMode.Linear, MipmapMode.None, ringPaint);
+  }
+  if (active || held) {
+    // orbiting arc segments; the held (selected) disc spins faster and tighter
+    const sp = held ? 3.2 : 1.1, rad = r + (held ? 13 : 15), w = held ? 4.5 : 3, rot = (t * sp * 57.2958) % 360;
+    arcPaint.setStrokeWidth(w); arcPaint.setColor(col(held ? '#ffffff' : TEAM_HI[team], held ? .95 : .7));
+    const box = Skia.XYWHRect(x - rad, y - rad, rad * 2, rad * 2);
+    for (let i = 0; i < 3; i++) c.drawArc(box, rot + i * 120, held ? 62 : 38, false, arcPaint);
   }
   const s = sprites(team, img);
   c.save(); c.translate(x, y); c.rotate(b.ang * 57.2958, 0, 0);
   c.drawImageRectOptions(s.disc, Skia.XYWHRect(0, 0, SPR, SPR), Skia.XYWHRect(-r, -r, 2 * r, 2 * r), FilterMode.Linear, MipmapMode.None, sprPaint);
   c.restore();
-  if (dark) { const dk = paints.dark; dk.setColor(col('#060818', .38)); c.drawCircle(x, y, r * .99, dk); }
+  if (dark) { const dk = paints.dark; dk.setColor(col('#060818', .34)); c.drawCircle(x, y, r * .99, dk); }
   c.drawImageRectOptions(s.gloss, Skia.XYWHRect(0, 0, SPR, SPR), Skia.XYWHRect(x - r, y - r, 2 * r, 2 * r), FilterMode.Linear, MipmapMode.None, sprPaint);
   void e;
 }
@@ -203,27 +227,51 @@ function drawTrail(c: SkCanvas, e: Engine, ballIdx: number) {
   p.setBlendMode(BlendMode.SrcOver);
 }
 
+// power colour: green → yellow → red, continuous
+const lerpC = (a: number[], b: number[], k: number) => [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k, a[2] + (b[2] - a[2]) * k];
+const PC = [[.24, 1, .66], [1, .82, .34], [1, .29, .35]];
+function powerCol(p: number, a = 1) { const c = p < .5 ? lerpC(PC[0], PC[1], p / .5) : lerpC(PC[1], PC[2], (p - .5) / .5); return Float32Array.from([c[0], c[1], c[2], a]); }
+const aimGlow = (() => { const p = P(); p.setBlendMode(BlendMode.Plus); p.setMaskFilter(Skia.MaskFilter.MakeBlur(BlurStyle.Normal, 9, true)); return p; })();
+const aimFill = P();
+const aimLine = (() => { const p = P(); p.setStyle(PaintStyle.Stroke); p.setStrokeWidth(2.2); return p; })();
+const dotPaint = (() => { const p = P(); p.setBlendMode(BlendMode.Plus); return p; })();
+
+// classic aiming arrow: tapered shaft + notched arrowhead, length and colour follow the power,
+// plus a dotted trajectory hint (bounces off the side walls) whose length depends on disc accuracy
 function drawAim(c: SkCanvas, e: Engine, t: number) {
   const a = e.aimInfo(); if (!a || a.p <= 0) return;
-  const b = a.b, x = b.x, y = b.y, pw = a.p, team = b.team as 0 | 1;
-  const cA = pw < .5 ? '#3dffa8' : pw < .8 ? '#ffd257' : '#ff4a5a';
-  // power ring
-  const g = paints.add2; g.setStrokeCap(StrokeCap.Round); g.setStrokeWidth(6); g.setColor(col(cA, .95));
-  c.drawArc(Skia.XYWHRect(x - b.r - 12, y - b.r - 12, (b.r + 12) * 2, (b.r + 12) * 2), -90, 360 * pw, false, g);
-  // direction arrow (gradient beam + head)
-  const L = PR + 30 + pw * 230, ex = x + a.ux * L, ey = y + a.uy * L;
-  const sp = paints.stroke; sp.setStrokeWidth(10 + pw * 6);
-  sp.setShader(Skia.Shader.MakeLinearGradient({ x: x + a.ux * b.r, y: y + a.uy * b.r }, { x: ex, y: ey }, [col(cA, 0), col(cA, .85), col('#ffffff', .95)], [0, .7, 1], TileMode.Clamp));
-  sp.setBlendMode(BlendMode.Plus); c.drawLine(x + a.ux * b.r, y + a.uy * b.r, ex - a.ux * 14, ey - a.uy * 14, sp); sp.setShader(null); sp.setBlendMode(BlendMode.SrcOver);
-  const hb = Skia.PathBuilder.Make(), px = -a.uy, py = a.ux, hs = 22 + pw * 8;
-  hb.moveTo(ex + a.ux * 6, ey + a.uy * 6).lineTo(ex - a.ux * hs + px * hs * .62, ey - a.uy * hs + py * hs * .62).lineTo(ex - a.ux * hs - px * hs * .62, ey - a.uy * hs - py * hs * .62).close(); const hp = hb.build();
-  const f = paints.fill; f.setColor(col('#ffffff', .95)); c.drawPath(hp, f);
-  // predicted path dots
-  const ad = paints.add; const steps = Math.max(2, Math.round((7 + pw * 7) * (e.cfg.stats ? aimPreview(e.statsOf(team).accuracy) : 1)));
-  for (let i = 1; i <= steps; i++) { const d = L + i * 26, k = 1 - i / (steps + 1); ad.setColor(col(team ? '#ffb0b8' : '#bfe8ff', .55 * k)); c.drawCircle(x + a.ux * d, y + a.uy * d, 3.2 * k + 1, ad); }
-  // pull-back tether
-  const tp = paints.stroke; tp.setStrokeWidth(3); tp.setColor(col('#ffffff', .25)); c.drawLine(x, y, x - a.ux * (b.r + 20 + pw * 70), y - a.uy * (b.r + 20 + pw * 70), tp);
-  void t;
+  const b = a.b, x = b.x, y = b.y, pw = a.p, team = b.team as 0 | 1, ux = a.ux, uy = a.uy, nx = -uy, ny = ux;
+  // power ring around the disc
+  arcPaint.setStrokeWidth(5); arcPaint.setColor(powerCol(pw, .95));
+  c.drawArc(Skia.XYWHRect(x - b.r - 20, y - b.r - 20, (b.r + 20) * 2, (b.r + 20) * 2), -90, 360 * pw, false, arcPaint);
+  const s0 = b.r + 24, L = 70 + pw * 240, hl = 34 + pw * 12, hw = 21 + pw * 8, w0 = 3.5, w1 = 8 + pw * 5;
+  const bx = x + ux * s0, by = y + uy * s0, tipx = bx + ux * L, tipy = by + uy * L, nkx = tipx - ux * hl, nky = tipy - uy * hl;
+  const back = hl * .22; // notch: wings sit slightly behind the neck
+  const pb = Skia.PathBuilder.Make();
+  pb.moveTo(bx + nx * w0, by + ny * w0)
+    .lineTo(nkx + nx * w1, nky + ny * w1)
+    .lineTo(nkx - ux * back + nx * hw, nky - uy * back + ny * hw)
+    .lineTo(tipx, tipy)
+    .lineTo(nkx - ux * back - nx * hw, nky - uy * back - ny * hw)
+    .lineTo(nkx - nx * w1, nky - ny * w1)
+    .lineTo(bx - nx * w0, by - ny * w0)
+    .quadTo(bx - ux * 5, by - uy * 5, bx + nx * w0, by + ny * w0).close();
+  const path = pb.build();
+  aimGlow.setColor(powerCol(pw, .55)); c.drawPath(path, aimGlow);
+  aimFill.setShader(Skia.Shader.MakeLinearGradient({ x: bx, y: by }, { x: tipx, y: tipy }, [powerCol(pw, .25), powerCol(pw, .95), col('#ffffff', 1)], [0, .62, 1], TileMode.Clamp));
+  c.drawPath(path, aimFill); aimFill.setShader(null);
+  aimLine.setColor(col('#ffffff', .75)); c.drawPath(path, aimLine);
+  // dotted trajectory with side-wall reflection
+  const steps = Math.max(3, Math.round((6 + pw * 8) * (e.cfg.stats ? aimPreview(e.statsOf(team).accuracy) : 1)));
+  let px = tipx, py = tipy, dx = ux, dy = uy; const F = e.F, gap = 30, ph = (t * 40) % gap;
+  for (let i = 0; i < steps; i++) {
+    const step = i === 0 ? 18 + ph : gap; px += dx * step; py += dy * step;
+    if (px < F.l + 10) { px = 2 * (F.l + 10) - px; dx = -dx; } else if (px > F.r - 10) { px = 2 * (F.r - 10) - px; dx = -dx; }
+    if (py < F.t || py > F.b) break;
+    const k = 1 - i / steps; dotPaint.setColor(team ? col('#ffd0dc', .7 * k) : col('#c8f3ff', .7 * k)); c.drawCircle(px, py, 2.2 + 2.6 * k, dotPaint);
+  }
+  // soft tether back toward the finger
+  const tl = b.r + 14 + pw * 60; aimLine.setColor(col('#ffffff', .22)); c.drawLine(x - ux * b.r, y - uy * b.r, x - ux * tl, y - uy * tl, aimLine);
 }
 
 function drawParts(c: SkCanvas, e: Engine) {
@@ -244,14 +292,15 @@ function drawGoals(c: SkCanvas, e: Engine, im: SkImage | null, t: number) {
 export function frame(e: Engine, v: View, im: Images, bg: SkPicture | null, ballIdx: number, t: number, hq = true): SkPicture {
   return createPicture((c: SkCanvas) => {
     if (bg) c.drawPicture(bg);
-    const cam = e.cam, shx = cam > .05 ? (Math.random() - .5) * cam * 7 : 0, shy = cam > .05 ? (Math.random() - .5) * cam * 7 : 0;
+    // smooth (noise-like) camera shake instead of per-frame random jitter
+    const cam = e.cam, shx = cam > .05 ? (Math.sin(t * 61) + Math.sin(t * 37.3) * .6) * cam * 2.6 : 0, shy = cam > .05 ? (Math.sin(t * 53.7) + Math.sin(t * 29.1) * .6) * cam * 2.6 : 0;
     c.save(); c.translate(v.ox + shx, v.oy + shy); c.scale(v.s, v.s);
     const al = e.alpha();
     drawGoals(c, e, im.goal, t);
     if (hq) drawGoalFx(c, e, t);
     const pos = (b: Body) => [b.px + (b.x - b.px) * al + b.vox, b.py + (b.y - b.py) * al + b.voy];
     const aimTeam = e.phase === 'aim' ? e.turn : -1;
-    for (const b of e.bodies) if (b !== e.ball) { const [x, y] = pos(b); drawPiece(c, e, b, x, y, b.team === 0 ? im.t0 : im.t1, t, b.team === aimTeam && !(e.drag && e.drag.b !== b) && !e.isAiTurn(), e.phase === 'aim' && b.team !== e.turn); }
+    for (const b of e.bodies) if (b !== e.ball) { const [x, y] = pos(b); drawPiece(c, e, b, x, y, b.team === 0 ? im.t0 : im.t1, t, b.team === aimTeam && !e.drag && !e.isAiTurn(), e.phase === 'aim' && b.team !== e.turn, !!e.drag && e.drag.b === b); }
     drawTrail(c, e, ballIdx);
     { const [x, y] = pos(e.ball); if (hq) drawBallHalo(c, e, x, y, ballIdx); drawBall(c, e.ball, x, y, im.ball, v.s); }
     drawAim(c, e, t);

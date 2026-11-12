@@ -9,7 +9,17 @@ export const BR = 25.5;    // ball radius
 export const RC = 70;      // rounded corner radius
 export const LMAX = 210;   // max drag length (world units) for full power
 export const STEP = 1 / 240;
-const HV = 8, PF1 = 430, PF2 = 1.0, PV0 = 520, EPP = .62, PCAP = 190;
+const HV = 8, EPP = .6, PCAP = 190;
+// v3 "weighty" feel. Rolling resistance is a constant deceleration that fades in smoothly over the
+// last few px/s (so pieces glide to a firm stop instead of creeping), plus a speed-proportional drag.
+// Host-authoritative online play means only the host simulates, so changing these needs no sync.
+export const PHYS = {
+  ballMass: 2.8, discMass: 6,
+  ballRoll: 340, ballDrag: .45, ballSoft: 140, ballStop: 6,       // ball: heavier, keeps momentum, no float
+  discRoll: 470, discDrag: .95, discSoft: 170, discStop: 8,
+  ballWallE: [.66, .26] as [number, number],                      // restitution at low speed, reduction at high speed
+  ramp: .085,                                                      // flick acceleration window (s)
+};
 
 export type Body = {
   id: number; team: 0 | 1 | 2; x: number; y: number; px: number; py: number;
@@ -96,10 +106,10 @@ export class Engine {
     for (let cm = 0 as 0 | 1; cm < 2; cm = (cm + 1) as 0 | 1) {
       slots(this.cfg.forms[cm]).forEach(([nx, ny], i) => {
         const x = F.l + PR + 10 + nx * (Fw - 2 * (PR + 10)), y = cm ? F.t + ny * Fh : F.b - ny * Fh;
-        this.bodies.push(this.mk(x, y, cm, PR, 5, cm * 20 + i));
+        this.bodies.push(this.mk(x, y, cm, PR, PHYS.discMass, cm * 20 + i));
       });
     }
-    this.ball = this.mk(this.CX, this.KY, 2, BR, 1.5, 99); this.bodies.push(this.ball);
+    this.ball = this.mk(this.CX, this.KY, 2, BR, PHYS.ballMass, 99); this.bodies.push(this.ball);
     this.turn = kickTeam; this.phase = 'aim'; this.drag = null; this.pause = 0; this.idle = 0; this.shots = 0;
     this.tleft = this.cfg.turnTime; this.aiT = 0; this.aiPlan = null;
     this.events.push({ t: 'turn', team: this.turn });
@@ -143,7 +153,7 @@ export class Engine {
       if (dev > 0) { const a = Math.atan2(uy, ux) + (Math.random() + Math.random() - 1) * dev; ux = Math.cos(a); uy = Math.sin(a); }
     }
     const vx = ux * v, vy = uy * v;
-    b.tvx = vx * 1.02; b.tvy = vy * 1.02; b.ramp = .06; b.vx = vx * .5; b.vy = vy * .5; b.boost = .22;
+    b.tvx = vx * 1.02; b.tvy = vy * 1.02; b.ramp = PHYS.ramp; b.vx = vx * .5; b.vy = vy * .5; b.boost = .22;
     this.phase = 'move'; this.idle = 0; this.shots++; this.drag = null; this.cam = Math.max(this.cam, .18);
     this.lastWho = b.team as 0 | 1;
     this.events.push({ t: 'shot', team: b.team as 0 | 1 });
@@ -154,7 +164,7 @@ export class Engine {
     const { F, ball } = this;
     if (b !== ball && b.gout) { const g = b.gout, dq = g.d * (b.y - g.y); if (dq > -b.r * 1.05) { b.vy = -g.d * 270 * K; b.vx *= .6; } else { b.vy = 0; b.vx *= .2; b.gout = null; } }
     const bl = b === ball, r = b.r, vs = hyp(b.vx, b.vy);
-    const eN = (vn: number) => bl ? (.72 - .30 * clamp((vn - 270 * K) / (730 * K), 0, 1)) : .82;
+    const eN = (vn: number) => bl ? (PHYS.ballWallE[0] - PHYS.ballWallE[1] * clamp((vn - 270 * K) / (730 * K), 0, 1)) : .82;
     if (b.x - r < F.l) { b.x = F.l + r; if (b.vx < 0) { if (bl && vs > 200) this.events.push({ t: 'wall', power: vs / 1800 }); b.vx *= -eN(-b.vx); b.spin += b.vy / r * .05; } }
     if (b.x + r > F.r) { b.x = F.r - r; if (b.vx > 0) { if (bl && vs > 200) this.events.push({ t: 'wall', power: vs / 1800 }); b.vx *= -eN(b.vx); b.spin -= b.vy / r * .05; } }
     for (const g of this.goals) {
@@ -198,8 +208,9 @@ export class Engine {
     let wa = a.im / sm * ka, wb = b.im / sm * kb; if (isB) { if (a === ball) wa = 1 - wb; else wb = 1 - wa; }
     const pen = Math.max(m - d - .3, 0) * .9;
     a.x -= nx * pen * wa; a.y -= ny * pen * wa; b.x += nx * pen * wb; b.y += ny * pen * wb;
-    a.vox = clamp(a.vox + nx * pen * wa, -9, 9); a.voy = clamp(a.voy + ny * pen * wa, -9, 9);
-    b.vox = clamp(b.vox - nx * pen * wb, -9, 9); b.voy = clamp(b.voy - ny * pen * wb, -9, 9);
+    // visual-only offset that hides positional correction; kept small so contacts don't shimmer
+    a.vox = clamp(a.vox + nx * pen * wa * .6, -4, 4); a.voy = clamp(a.voy + ny * pen * wa * .6, -4, 4);
+    b.vox = clamp(b.vox - nx * pen * wb * .6, -4, 4); b.voy = clamp(b.voy - ny * pen * wb * .6, -4, 4);
     const vn = (b.vx - a.vx) * nx + (b.vy - a.vy) * ny; if (vn >= 0) return;
     const e = vn < -40 * K ? (isB ? .74 - .12 * clamp((-vn - 500 * K) / (1200 * K), 0, 1) : EPP) : 0;
     const j = -(1 + e) * vn / sm, pa = isB ? (a === ball ? b : a) : null, pre = pa ? hyp(pa.vx, pa.vy) : 0;
@@ -221,21 +232,15 @@ export class Engine {
     const ball = this.ball;
     for (const b of this.bodies) {
       if (b.ramp > 0) { const k = Math.min(1, dt / b.ramp); b.vx += (b.tvx - b.vx) * k; b.vy += (b.tvy - b.vy) * k; b.ramp -= dt; if (b.ramp <= 0) b.ramp = 0; }
-      if (b.vox || b.voy) { const q = 1 - Math.min(1, dt * 15); b.vox *= q; b.voy *= q; if (Math.abs(b.vox) < .04) b.vox = 0; if (Math.abs(b.voy) < .04) b.voy = 0; }
+      if (b.vox || b.voy) { const q = 1 - Math.min(1, dt * 11); b.vox *= q; b.voy *= q; if (Math.abs(b.vox) < .04) b.vox = 0; if (Math.abs(b.voy) < .04) b.voy = 0; }
       b.x += b.vx * dt; b.y += b.vy * dt;
       const sp = hyp(b.vx, b.vy), bl = b === ball;
       if (sp > 0) {
-        if (bl) {
-          const f = 610 * K * Math.min(1, sp / (480 * K)) + sp * .035, ns = sp - f * dt;
-          if (ns < 12 * K) { b.vx = b.vy = 0; } else {
-            // straight roll: no curve / side-spin drift
-            const k = Math.min(ns, 2500 * K) / sp; b.vx *= k; b.vy *= k;
-          }
-        } else {
-          const fb = b.boost > 0 ? .35 : 1; if (b.boost > 0) b.boost -= dt;
-          const ns = sp - (PF1 * K * Math.min(1, sp / (PV0 * K)) + sp * PF2) * fb * dt;
-          if (ns < 14 * K) { b.vx = b.vy = 0; } else { const k = Math.min(ns, 2800 * K) / sp; b.vx *= k; b.vy *= k; }
-        }
+        // smooth "weighty" friction: constant rolling resistance (faded in near rest) + linear drag
+        const roll = bl ? PHYS.ballRoll : PHYS.discRoll, drag = bl ? PHYS.ballDrag : PHYS.discDrag, soft = (bl ? PHYS.ballSoft : PHYS.discSoft) * K;
+        let fb = 1; if (!bl && b.boost > 0) { fb = .35; b.boost -= dt; }
+        const fr = (roll * K * (sp < soft ? .35 + .65 * sp / soft : 1) + sp * drag) * fb, ns = sp - fr * dt;
+        if (ns < (bl ? PHYS.ballStop : PHYS.discStop) * K) { b.vx = b.vy = 0; } else { const k = Math.min(ns, (bl ? 2500 : 2800) * K) / sp; b.vx *= k; b.vy *= k; }
       }
       if (bl) {
         const sp2 = hyp(b.vx, b.vy); b.spin *= 1 - (sp2 > 0 ? 1.05 : 3.2) * dt; if (Math.abs(b.spin) < .02) b.spin = 0;
