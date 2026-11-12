@@ -126,7 +126,7 @@ export function drawScene(cfg: SceneCfg, yaw: number, t: number, sky: Sky, gates
     // ---- stadium bowl (stands) ----
     {
       const sp = Skia.Paint(); sp.setAntiAlias(true);
-      const tiers = [[38, 0, 42, 6, '#1a1250'], [42, 6, 47, 12, '#120c3a'], [47, 12, 52, 17, '#0c0828']];
+      const tiers = [[38, 0, 42, 6, sky.k === 'day' ? '#2a2f6a' : '#1c1458'], [42, 6, 47, 12, sky.k === 'day' ? '#232760' : '#150e44'], [47, 12, 52, 17, sky.k === 'day' ? '#1c1f52' : '#0e0a30']];
       const a0 = yaw - 70 * DEG, step = 5 * DEG, n = 28;
       for (const tr of tiers) {
         sp.setColor(hex(tr[4] as string, 1));
@@ -136,9 +136,21 @@ export function drawScene(cfg: SceneCfg, yaw: number, t: number, sky: Sky, gates
           const path = polyPath(P, cfg); if (path) c.drawPath(path, sp);
         }
       }
+      // seat rows
+      const rowP = Skia.Paint(); rowP.setAntiAlias(true); rowP.setStyle(PaintStyle.Stroke); rowP.setStrokeWidth(1); rowP.setColor(hex('#8f7bff', .22));
+      for (let rr = 0; rr < 8; rr++) {
+        const r = 38.6 + rr * 1.7, y = (r - 38) * 1.2, pb = Skia.PathBuilder.Make();
+        for (let i = 0; i < n; i++) { const a = a0 + i * step, b = a + step; seg(pb, toCam(Math.sin(a) * r, y, -Math.cos(a) * r, yaw, camY), toCam(Math.sin(b) * r, y, -Math.cos(b) * r, yaw, camY), cfg); }
+        c.drawPath(pb.build(), rowP);
+      }
+      // roof canopy
+      { sp.setColor(hex('#07051c', 1));
+        for (let i = 0; i < n; i++) { const a = a0 + i * step, b = a + step + .002;
+          const P = [[Math.sin(a) * 52, 17, -Math.cos(a) * 52], [Math.sin(b) * 52, 17, -Math.cos(b) * 52], [Math.sin(b) * 46, 21, -Math.cos(b) * 46], [Math.sin(a) * 46, 21, -Math.cos(a) * 46]].map(q => toCam(q[0], q[1], q[2], yaw, camY));
+          const path = polyPath(P, cfg); if (path) c.drawPath(path, sp); } }
       // roof edge + tier glow lines
       const gp = Skia.Paint(); gp.setAntiAlias(true); gp.setStyle(PaintStyle.Stroke);
-      const rings: [number, number, string, number][] = [[52, 17, '#27e6ff', 2.2], [47, 12, '#a43bff', 1.4], [42, 6, '#27e6ff', 1]];
+      const rings: [number, number, string, number][] = [[46, 21, '#27e6ff', 2.4], [52, 17, '#a43bff', 1.4], [47, 12, '#a43bff', 1.1], [38, 0, '#27e6ff', 1.6]];
       for (const [r, y, col, w] of rings) {
         const pb = Skia.PathBuilder.Make();
         for (let i = 0; i < n; i++) { const a = a0 + i * step, b = a + step; seg(pb, toCam(Math.sin(a) * r, y, -Math.cos(a) * r, yaw, camY), toCam(Math.sin(b) * r, y, -Math.cos(b) * r, yaw, camY), cfg); }
@@ -147,7 +159,7 @@ export function drawScene(cfg: SceneCfg, yaw: number, t: number, sky: Sky, gates
       // crowd flashes / seat lights
       if (cfg.hq) {
         const dp = Skia.Paint(); dp.setAntiAlias(true);
-        for (let i = 0; i < 90; i++) {
+        for (let i = 0; i < 220; i++) {
           const a = rnd(i + 200) * Math.PI * 2; let d = a - yaw; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; if (Math.abs(d) > 1.1) continue;
           const r = 39 + rnd(i + 300) * 12, y = (r - 38) * 1.2;
           const q = toCam(Math.sin(a) * r, y, -Math.cos(a) * r, yaw, camY); if (q[2] < 1) continue; const s = project(q[0], q[1], q[2], cfg);
@@ -158,7 +170,7 @@ export function drawScene(cfg: SceneCfg, yaw: number, t: number, sky: Sky, gates
     // ---- floodlight towers ----
     {
       const tp = Skia.Paint(); tp.setAntiAlias(true); const add = Skia.Paint(); add.setAntiAlias(true); add.setBlendMode(BlendMode.Plus);
-      for (const ang of [-50, 50, -130, 130]) {
+      for (const ang of [-32, 32, -96, 96, -160, 160]) {
         const a = ang * DEG, r = 55; const base = toCam(Math.sin(a) * r, 0, -Math.cos(a) * r, yaw, camY), top = toCam(Math.sin(a) * r, 34, -Math.cos(a) * r, yaw, camY);
         if (top[2] < 2) continue; const b = project(base[0], base[1], base[2], cfg), tt = project(top[0], top[1], top[2], cfg);
         if (tt[0] < -80 || tt[0] > W + 80) continue;
@@ -194,8 +206,9 @@ export function drawScene(cfg: SceneCfg, yaw: number, t: number, sky: Sky, gates
       { const pb = Skia.PathBuilder.Make(); for (let i = 0; i < 28; i++) { const a0 = i / 28 * Math.PI * 2, a1 = (i + 1) / 28 * Math.PI * 2; seg(pb, toCam(px + Math.cos(a0) * w * .62, .02, pz + Math.sin(a0) * w * .62, yaw, camY), toCam(px + Math.cos(a1) * w * .62, .02, pz + Math.sin(a1) * w * .62, yaw, camY), cfg); }
         const rp = pb.build(); glow.setStrokeWidth(6); glow.setColor(hex(g.color, foc ? .9 : .45)); c.drawPath(rp, glow); line.setStrokeWidth(1.6); line.setColor(hex(g.color, .9)); c.drawPath(rp, line); }
       // light shaft
-      { const top = project(ctr[0], h * 3.5 - camY, ctr[2], cfg); add.setShader(Skia.Shader.MakeLinearGradient({ x: 0, y: sc[1] }, { x: 0, y: top[1] }, [hex(g.color, foc ? .28 : .12), hex(g.color, 0)], null, TileMode.Clamp));
-        c.drawRect(Skia.XYWHRect(sc[0] - w * .35 * k, top[1], w * .7 * k, sc[1] - top[1]), add); add.setShader(null); }
+      { const top = project(ctr[0], h * 2.4 - camY, ctr[2], cfg), bw = w * .3 * k; add.setShader(Skia.Shader.MakeLinearGradient({ x: 0, y: sc[1] }, { x: 0, y: top[1] }, [hex(g.color, foc ? .2 : .08), hex(g.color, 0)], null, TileMode.Clamp));
+        const sh = Skia.PathBuilder.Make().moveTo(sc[0] - bw, sc[1]).lineTo(sc[0] + bw, sc[1]).lineTo(sc[0] + bw * .35, top[1]).lineTo(sc[0] - bw * .35, top[1]).close().build();
+        c.drawPath(sh, add); add.setShader(null); }
       // portal frame (chamfered hexagon standing on the floor)
       const shape = [[-w / 2 + ch, 0], [w / 2 - ch, 0], [w / 2, ch], [w / 2, h - ch], [w / 2 - ch, h], [-w / 2 + ch, h], [-w / 2, h - ch], [-w / 2, ch]].map(q => P(q[0], q[1]));
       const fp = polyPath(shape, cfg); if (!fp) continue;

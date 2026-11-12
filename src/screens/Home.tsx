@@ -40,7 +40,7 @@ function Home({ top, bottom, onOnline, onMode, onTab, onDaily, onChest, dailyRea
     { key: 'profile', ang: -112 * DEG, color: '#9fb3ff', icon: 'user', fa: 'پروفایل', en: 'PROFILE', say: ['آمار، لیگ و مأموریت‌هات اینجاست.', 'Your stats, league and missions.'], act: () => onTab('profile') },
   ], [onMode, onOnline, onTab]);
 
-  const cfg: SceneCfg = useMemo(() => ({ W, H, f: Math.min(W * .82, H * .55), cy: H * .47, camY: 1.7, R: 6.6, gw: 2.5, gh: 3.6, hq }), [W, H, hq]);
+  const cfg: SceneCfg = useMemo(() => ({ W, H, f: Math.min(W * .82, H * .55), cy: H * .5, camY: 1.7, R: 6.6, gw: 2.2, gh: 3.3, hq }), [W, H, hq]);
   const icons = useMemo(() => gates.map(g => {
     const gl = GLYPHS[g.icon]; const out: SkPath[] = [];
     const b = gl.body?.length ? Skia.Path.MakeFromSVGString(gl.body.join(' ')) : (gl.lines ? Skia.Path.MakeFromSVGString(gl.lines.join(' ')) : null);
@@ -89,7 +89,7 @@ function Home({ top, bottom, onOnline, onMode, onTab, onDaily, onChest, dailyRea
     <View style={StyleSheet.absoluteFill}>
       <View style={StyleSheet.absoluteFill} {...pan.panHandlers}>
         <Canvas style={StyleSheet.absoluteFill} pointerEvents="none"><Picture picture={pic} /></Canvas>
-        {gates.map((gt, i) => <GateLabel key={gt.key} gate={gt} yaw={yaw} cfg={cfg} focused={i === focus} />)}
+        {gates.map((gt, i) => (gt.main ? null : <GateLabel key={gt.key} gate={gt} yaw={yaw} cfg={cfg} focused={i === focus} />))}
         <ArenaScreen yaw={yaw} cfg={cfg} />
       </View>
 
@@ -161,13 +161,15 @@ const ArenaScreen = memo(function ArenaScreen({ yaw, cfg }: { yaw: any; cfg: Sce
   const a = useAnimatedStyle(() => {
     const d = -yaw.value; if (Math.abs(d) > 50 * DEG) return { opacity: 0, transform: [{ translateX: -999 }] };
     const x = cfg.W / 2 + Math.tan(d) * cfg.f;
-    return { opacity: 1 - Math.abs(d) / (50 * DEG), transform: [{ translateX: x - SW / 2 }, { translateY: cfg.cy - cfg.f * .52 }] };
+    const r = gateRect(0, yaw.value, cfg);
+    return { opacity: 1 - Math.abs(d) / (50 * DEG), transform: [{ translateX: x - SW / 2 }, { translateY: (r ? r[1] : cfg.cy - cfg.f * .4) - 78 }] };
   });
   return (
     <Animated.View pointerEvents="none" style={[{ position: 'absolute', left: 0, top: 0, width: SW }, a]}>
       <Chamfer k={10} color={N.cyan} color2={N.purple} fill={['rgba(16,10,60,.88)', 'rgba(4,2,16,.94)']} brackets={false}>
         <View style={{ paddingVertical: 8, paddingHorizontal: 10, alignItems: 'center' }}>
-          <T s={tr('مسابقه بعدی · جام نکسورا', 'NEXT MATCH · NEXORA CUP')} n={1} style={{ fontFamily: F.bold, fontSize: 12, color: '#e8fbff' }} />
+          <T s={tr('بازی سریع · ورود به آرنا', 'QUICK MATCH · ENTER ARENA')} n={1} style={{ fontFamily: F.bold, fontSize: 13, color: '#e8fbff' }} />
+          <T s={tr('مسابقه بعدی · جام نکسورا', 'NEXT MATCH · NEXORA CUP')} n={1} style={{ fontSize: 10, color: '#9fefff', marginTop: 1 }} />
           <T s="NEXORA ARENA" raw style={{ fontFamily: F.head, fontSize: 9, letterSpacing: 4, color: N.cyan, marginTop: 2 }} />
         </View>
       </Chamfer>
