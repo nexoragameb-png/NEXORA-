@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import Animated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSequence, withSpring, withTiming } from 'react-native-reanimated';
-import { Canvas, Fill, Group, Image as SkImg, Path, RadialGradient, Rect, useClock, useImage, usePathValue, vec } from '@shopify/react-native-skia';
+import { Canvas, Circle, Fill, Group, Oval, Path, RadialGradient, Rect, useClock, usePathValue, vec } from '@shopify/react-native-skia';
 import { useDerivedValue } from 'react-native-reanimated';
-import { UI } from '../game/assets';
+import { NxLogo } from '../ui/vec/Art';
+import { tr } from '../i18n';
 import { T } from '../ui/kit';
 import { F } from '../ui/theme';
 import { buzz, sfx } from '../sound';
@@ -51,7 +52,6 @@ export default function Intro({ onDone }: { onDone: () => void }) {
     }
   });
   const far = mk(false), near = mk(true);
-  const planet = useImage(UI.planet);
   const pt = useDerivedValue(() => {
     const t = clock.value / 1000, p = Math.min(1, Math.max(0, (t - 1.8) / 2.4)), e = 1 - Math.pow(1 - p, 3);
     const sz = Math.min(W, H) * 1.1 * e;
@@ -88,20 +88,28 @@ export default function Intro({ onDone }: { onDone: () => void }) {
           </Rect>
           <Path path={far} style="stroke" strokeWidth={1.1} strokeCap="round" color="rgba(150,200,255,0.55)" />
           <Path path={near} style="stroke" strokeWidth={2.4} strokeCap="round" color="rgba(200,180,255,0.95)" />
-          {planet ? <Group transform={pt} opacity={pop}><SkImg image={planet} x={0} y={0} width={640} height={640} /></Group> : null}
+          <Group transform={pt} opacity={pop}>
+            {/* procedural ringed planet (was a 82 KB bitmap) */}
+            <Circle cx={320} cy={320} r={300} color="rgba(164,59,255,0.18)" />
+            <Circle cx={320} cy={320} r={210}>
+              <RadialGradient c={vec(250, 240)} r={300} colors={['#7fe8ff', '#3b5bff', '#2a0f6a', '#05020f']} positions={[0, .35, .75, 1]} />
+            </Circle>
+            <Oval x={40} y={290} width={560} height={70} style="stroke" strokeWidth={10} color="rgba(39,230,255,0.55)" />
+            <Oval x={70} y={300} width={500} height={50} style="stroke" strokeWidth={4} color="rgba(255,122,224,0.6)" />
+          </Group>
         </Canvas>
-        <Animated.Image source={UI.nx_logo} resizeMode="contain" style={[{ position: 'absolute', left: W / 2, top: cy, width: LS, height: LS }, lg]} />
+        <Animated.View style={[{ position: 'absolute', left: W / 2, top: cy, width: LS, height: LS, alignItems: 'center', justifyContent: 'center' }, lg]}><NxLogo size={LS * .62} /></Animated.View>
         <Animated.View style={[{ position: 'absolute', left: 0, right: 0, top: cy + LS * .42, alignItems: 'center' }, tg]}>
           <T s="NEXORA · FINGER SOCCER" style={{ fontFamily: F.head, fontSize: 12, letterSpacing: 6, color: '#5ce1ff' }} />
         </Animated.View>
         <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: '#dff6ff' }, flash]} />
         {ready ? (
           <Animated.View style={[{ position: 'absolute', bottom: H * .13, alignSelf: 'center' }, tp]}>
-            <Pressable onPress={enter} style={s.tap}><T s="برای ورود لمس کنید" style={{ fontFamily: F.bold, fontSize: 15 }} /></Pressable>
+            <Pressable onPress={enter} style={s.tap}><T s={tr("برای ورود لمس کن", "TAP TO ENTER")} style={{ fontFamily: F.bold, fontSize: 15 }} /></Pressable>
           </Animated.View>
         ) : null}
       </Pressable>
-      <Pressable onPress={enter} style={s.skip}><T s="رد کردن ‹" style={{ fontSize: 13 }} /></Pressable>
+      <Pressable onPress={enter} style={s.skip}><T s={tr("رد کردن ‹", "SKIP ›")} style={{ fontSize: 13 }} /></Pressable>
     </Animated.View>
   );
 }

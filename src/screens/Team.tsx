@@ -4,26 +4,31 @@ import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withSeq
 import { LinearGradient } from 'expo-linear-gradient';
 import { BALL_IMG, FIELD_THUMB, TEAM_IMG, UI, UI2 } from '../game/assets';
 import { BALL_NAMES, CATS, FIELDS, FORMS, TEAMS, TRAILS, Team as TeamT, ballPrice, fieldPrice, slots, teamPrice } from '../game/data';
-import { RARITY, cardStats, rarity, teamById, teamKey } from '../game/util';
+import { RARITY, rarity, teamById, teamKey } from '../game/util';
 import { useStore } from '../store';
-import { Bar, Btn, Chip, Img, Panel, Press, Pulse, Segment, T } from '../ui/kit';
-import { C, F, G, fa } from '../ui/theme';
+import { Btn, Img, Panel, Press, Pulse, Segment, T, rowDir, startAlign, textStart } from '../ui/kit';
+import { Icon } from '../ui/vec/Icon';
+import { HoloPad } from '../ui/vec/Art';
+import { tr, isRTL } from '../i18n';
+import { C, F, G, N, fa } from '../ui/theme';
 import { buzz, sfx } from '../sound';
-import { useDiscs, discStats, isFreeDisc } from '../net/discs';
+import { useDiscs, discStats, localCoinPrice, onServer } from '../net/discs';
 import { useAuth } from '../net/auth';
 import { StatBars } from '../online/ui';
 
 type Toast = (m: string, k?: string) => void;
 type Sub = 'disc' | 'ball' | 'field' | 'form';
-const CAT_FA: Record<string, string> = { club: 'باشگاه', nat: 'ملی', elite: 'الیت', emb: 'نشان', leg: 'افسانه', vip: 'VIP', chrome: 'کروم', car: 'خودرو', lux: 'لوکس', spt: 'ورزشی' };
-const CAT_ORDER = ['club', 'nat', 'elite', 'emb', 'leg', 'vip', 'chrome', 'car', 'lux', 'spt'];
 
 function TeamScreen({ top, bottom, toast }: { top: number; bottom: number; toast: Toast }) {
   const [sub, setSub] = useState<Sub>('disc');
   return (
     <View style={{ flex: 1, paddingTop: top }}>
       <View style={{ paddingHorizontal: 16, marginBottom: 6 }}>
-        <Segment value={sub} onChange={setSub} items={[['disc', 'دیسک'], ['ball', 'توپ'], ['field', 'زمین'], ['form', 'ترکیب']]} />
+        <View style={{ flexDirection: rowDir(), alignItems: 'baseline', marginBottom: 8 }}>
+          <T s={tr('انتخاب تجهیزات', 'SELECT LOADOUT')} style={{ fontFamily: F.title, fontSize: 18 }} />
+          <T s={tr('  LOADOUT', '  تجهیزات')} raw style={{ fontFamily: F.head, fontSize: 9, letterSpacing: 2, color: N.cyan }} />
+        </View>
+        <Segment value={sub} onChange={setSub} items={[['disc', tr('دیسک', 'Disc')], ['ball', tr('توپ', 'Ball')], ['field', tr('زمین', 'Pitch')], ['form', tr('ترکیب', 'Formation')]]} />
       </View>
       <View style={{ flex: 1 }}>
         {sub === 'disc' ? <Discs bottom={bottom} toast={toast} /> : sub === 'ball' ? <Balls bottom={bottom} toast={toast} /> : sub === 'field' ? <Fields bottom={bottom} toast={toast} /> : <Formation bottom={bottom} />}
@@ -34,76 +39,107 @@ function TeamScreen({ top, bottom, toast }: { top: number; bottom: number; toast
 export default memo(TeamScreen);
 
 // ---------- discs ----------
+const CAT_INFO: Record<string, [string, string, string]> = { dlx: ['دلوکس', 'DELUXE', '#ff7ae0'], club: ['باشگاه‌ها', 'CLUBS', '#27e6ff'], car: ['خودروها', 'CARS', '#ffd257'] };
 function Discs({ bottom, toast }: { bottom: number; toast: Toast }) {
   const { p, set } = useStore(); const { width: W } = useWindowDimensions();
-  const [cat, setCat] = useState(teamById(p.team).cat);
+  const [cat, setCat] = useState<string>(teamById(p.team).cat);
   const [focus, setFocus] = useState(p.team);
   const list = useMemo(() => TEAMS.filter(t => t.cat === cat), [cat]);
-  const cell = (W - 32 - 3 * 8) / 4;
+  const cols = W >= 600 ? 6 : 4, cell = (W - 32 - (cols - 1) * 8) / cols;
   const dz = useDiscs(); const auth = useAuth();
   const [busy, setBusy] = useState(false);
-  const ft = teamById(focus), owned = dz.has(ft.id), price = dz.catalog[ft.id]?.price_gems ?? (isFreeDisc(ft.id) ? 0 : teamPrice(ft)), ds = discStats(ft.id), rr = RARITY[rarity(ft)];
-  const gems = auth.profile?.gems ?? 0;
+  const ownedId = useCallback((id: string) => dz.has(id) || p.ownedTeams.includes(id), [dz.has, p.ownedTeams]);
+  const ft = teamById(focus), owned = ownedId(ft.id), server = onServer(ft.id), ds = discStats(ft.id), rk = rarity(ft), rr = RARITY[rk];
+  const gemPrice = dz.catalog[ft.id]?.price_gems ?? 0, coinPrice = localCoinPrice(ft.id);
   const act = async () => {
     if (busy) return;
     if (owned) {
-      set({ team: ft.id }); buzz('success'); toast(`${ft.name} انتخاب شد`, 'ok');
-      if (auth.uid) dz.equip(ft.id).then(r => { if (!r.ok) toast(r.error!, 'err'); });
+      set({ team: ft.id }); buzz('success'); toast(tr(`${ft.name} انتخاب شد`, `${ft.name} selected`), 'ok');
+      if (auth.uid && server) dz.equip(ft.id).then(r => { if (!r.ok) toast(r.error!, 'err'); });
       return;
+    }
+    if (!server) {
+      // disc not in the server catalog yet → unlock locally with coins
+      if (p.coins < coinPrice) { toast(tr(`${fa(coinPrice - p.coins)} سکه‌ی دیگر لازم داری`, `You need ${fa(coinPrice - p.coins)} more coins`), 'err'); buzz('medium'); return; }
+      set(q => ({ coins: q.coins - coinPrice, team: ft.id, ownedTeams: q.ownedTeams.includes(ft.id) ? q.ownedTeams : [...q.ownedTeams, ft.id] }));
+      sfx('win'); buzz('success'); toast(tr(`${ft.name} باز شد!`, `${ft.name} unlocked!`), 'ok'); return;
     }
     setBusy(true);
     try {
-      if (!auth.uid) { const id = await auth.ensure(); if (!id) { toast('برای خرید باید آنلاین باشی', 'err'); return; } }
+      if (!auth.uid) { const id = await auth.ensure(); if (!id) { toast(tr('برای خرید باید آنلاین باشی', 'You need to be online to buy'), 'err'); return; } }
       const g = auth.profile?.gems ?? 0;
-      if (auth.profile && g < price) { toast(`${fa(price - g)} الماس دیگر لازم داری · چالش‌های روزانه و تورنمنت‌ها الماس می‌دهند`, 'err'); buzz('medium'); return; }
+      if (auth.profile && g < gemPrice) { toast(tr(`${fa(gemPrice - g)} الماس دیگر لازم داری · چالش‌های روزانه و تورنمنت‌ها الماس می‌دهند`, `You need ${fa(gemPrice - g)} more gems · daily challenges and tournaments give gems`), 'err'); buzz('medium'); return; }
       const r = await dz.buy(ft.id);
       if (!r.ok) { toast(r.error!, 'err'); return; }
       await dz.equip(ft.id); set(q => ({ team: ft.id, ownedTeams: q.ownedTeams.includes(ft.id) ? q.ownedTeams : [...q.ownedTeams, ft.id] }));
-      sfx('win'); buzz('success'); toast(`${ft.name} باز شد! · 💎 ${fa(r.gems ?? 0)} باقی‌مانده`, 'ok');
+      sfx('win'); buzz('success'); toast(tr(`${ft.name} باز شد!`, `${ft.name} unlocked!`), 'ok');
     } finally { setBusy(false); }
   };
+  const priceLabel = server ? `💎 ${fa(gemPrice)}` : `◉ ${fa(coinPrice)}`;
   const header = (
     <View>
-      <DiscHero t={ft} color={rr.c} />
-      <View style={{ alignItems: 'center' }}>
-        <View style={[s.rar, { borderColor: rr.c + '88', backgroundColor: rr.c + '1c' }]}><T s={rr.n} style={{ fontFamily: F.head, fontSize: 9, letterSpacing: 3, color: rr.c }} /></View>
-        <T s={ft.name.toUpperCase()} n={1} style={{ fontFamily: F.title, fontSize: 20, letterSpacing: 1, marginTop: 4 }} />
+      <View style={{ flexDirection: rowDir(), paddingHorizontal: 12, marginTop: 4 }}>
+        {(['dlx', 'club', 'car'] as const).map(k => (
+          <Press key={k} onPress={() => setCat(k)} style={{ flex: 1, marginHorizontal: 3 }}>
+            <View style={[s.tab, cat === k && { borderColor: CAT_INFO[k][2], backgroundColor: CAT_INFO[k][2] + '22' }]}>
+              {k === 'dlx' ? <Icon name="crown" size={16} /> : <Icon name={k === 'car' ? 'bolt' : 'shield'} size={16} />}
+              <T s={tr(CAT_INFO[k][0], CAT_INFO[k][1])} n={1} style={{ fontFamily: F.bold, fontSize: 12, marginHorizontal: 4, color: cat === k ? '#fff' : C.dim }} />
+            </View>
+          </Press>
+        ))}
       </View>
-      <Panel style={{ marginHorizontal: 16, marginTop: 10, padding: 12 }} accent={rr.c}>
-        <StatBars power={ds.power} accuracy={ds.accuracy} />
-        <T s="قدرت = سرعت بیشینه‌ی ضربه · دقت = انحراف کمتر و پیش‌نمایش مسیر بلندتر" style={{ fontSize: 10, color: C.dim, marginTop: 6, textAlign: 'right' }} />
-        <View style={{ marginTop: 10 }}>
-          {p.team === ft.id ? <Btn label="انتخاب‌شده ✓" small colors={G.dark} disabled />
-            : owned ? <Btn label="انتخاب این دیسک" small onPress={act} />
-              : <Btn label={busy ? '…' : `خرید · 💎 ${fa(price)}`} sub={auth.profile ? `موجودی: ${fa(gems)} الماس` : undefined} small colors={G.violet} onPress={act} disabled={busy} />}
-        </View>
-      </Panel>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 14 }} contentContainerStyle={{ paddingHorizontal: 8 }}>
-        {CAT_ORDER.filter(k => CATS.some(c => c[0] === k)).map(k => <Chip key={k} label={CAT_FA[k] || k} on={cat === k} onPress={() => setCat(k)} accent={k === 'leg' || k === 'vip' ? C.gold : k === 'emb' || k === 'chrome' ? C.violet : C.cyan} />)}
-      </ScrollView>
-      <View style={{ height: 10 }} />
+      <View style={{ flexDirection: rowDir(), alignItems: 'center', paddingHorizontal: 12, marginTop: 6 }}>
+        <View style={{ flex: 1.1 }}><DiscHero t={ft} color={rr.c} /></View>
+        <Panel style={{ flex: 1, padding: 10 }} accent={rr.c}>
+          <TierBadge rk={rk} />
+          <T s={ft.name} n={2} raw style={{ fontFamily: F.title, fontSize: 15, marginTop: 6, textAlign: textStart() }} />
+          <View style={{ marginTop: 8 }}><StatBars power={ds.power} accuracy={ds.accuracy} /></View>
+          <T s={ft.tier === 'dlx' ? tr('دیسک دلوکس: بیشترین قدرت و دقت بازی', 'Deluxe disc: top power & accuracy in the game') : tr('قدرت = سرعت ضربه · دقت = انحراف کمتر', 'Power = shot speed · Accuracy = less deviation')} n={3} style={{ fontSize: 10, color: C.dim, marginTop: 6, textAlign: textStart() }} />
+        </Panel>
+      </View>
+      <View style={{ paddingHorizontal: 16, marginTop: 10 }}>
+        {p.team === ft.id ? <Btn label={tr('انتخاب‌شده ✓', 'EQUIPPED ✓')} small colors={G.dark} disabled />
+          : owned ? <Btn label={tr('انتخاب این دیسک', 'EQUIP THIS DISC')} small onPress={act} />
+            : <Btn label={busy ? '…' : `${tr('خرید', 'BUY')} · ${priceLabel}`} sub={!server ? tr('باز کردن با سکه', 'unlock with coins') : auth.profile ? tr(`موجودی: ${fa(auth.profile.gems)} الماس`, `balance: ${fa(auth.profile.gems)} gems`) : undefined} small colors={ft.tier === 'dlx' ? ['#ff7ae0', '#a43bff', '#ffd257'] : G.violet} onPress={act} disabled={busy} />}
+      </View>
+      <View style={{ flexDirection: rowDir(), alignItems: 'center', paddingHorizontal: 16, marginTop: 14, marginBottom: 8 }}>
+        <T s={tr(`${CAT_INFO[cat][0]} · ${fa(list.length)} دیسک`, `${CAT_INFO[cat][1]} · ${list.length} discs`)} style={{ fontFamily: F.bold, fontSize: 12, color: CAT_INFO[cat][2] }} />
+        <View style={{ flex: 1, height: 1, backgroundColor: CAT_INFO[cat][2] + '44', marginHorizontal: 8 }} />
+      </View>
     </View>
   );
   const render = useCallback(({ item: t, index }: { item: TeamT; index: number }) => (
-    <DiscCell t={t} cell={cell} last={index % 4 === 3} sel={t.id === focus} own={dz.has(t.id)} price={dz.catalog[t.id]?.price_gems ?? 0} eq={t.id === p.team} onPress={() => setFocus(t.id)} />
-  ), [cell, focus, dz.has, dz.catalog, p.team]);
+    <DiscCell t={t} cell={cell} last={index % cols === cols - 1} sel={t.id === focus} own={ownedId(t.id)} price={onServer(t.id) ? `💎${dz.catalog[t.id]?.price_gems ?? 0}` : `◉${localCoinPrice(t.id)}`} eq={t.id === p.team} onPress={() => setFocus(t.id)} />
+  ), [cell, cols, focus, ownedId, dz.catalog, p.team]);
   return (
-    <FlatList data={list} key={'d' + cat} numColumns={4} keyExtractor={t => t.id} renderItem={render} ListHeaderComponent={header}
-      contentContainerStyle={{ paddingBottom: bottom + 10 }} columnWrapperStyle={{ paddingHorizontal: 16 }} showsVerticalScrollIndicator={false}
+    <FlatList data={list} key={'d' + cat + cols} numColumns={cols} keyExtractor={t => t.id} renderItem={render} ListHeaderComponent={header}
+      contentContainerStyle={{ paddingBottom: bottom + 10 }} columnWrapperStyle={{ paddingHorizontal: 16, flexDirection: rowDir() }} showsVerticalScrollIndicator={false}
       initialNumToRender={16} maxToRenderPerBatch={12} windowSize={7} removeClippedSubviews />
   );
 }
 
-const DiscCell = memo(function DiscCell({ t, cell, last, sel, own, eq, price, onPress }: { t: TeamT; cell: number; last: boolean; sel: boolean; own: boolean; eq: boolean; price: number; onPress: () => void }) {
-  const rc = RARITY[rarity(t)].c;
+function TierBadge({ rk }: { rk: number }) {
+  const r = RARITY[rk];
   return (
-    <Press onPress={onPress} style={{ width: cell, marginRight: last ? 0 : 8, marginBottom: 8 }} scaleTo={.92}>
-      <View style={[s.cell, { height: cell + 20, borderColor: sel ? rc : 'rgba(110,170,255,.16)' }, sel && { backgroundColor: rc + '22' }]}>
-        <Img src={TEAM_IMG[teamKey(t)]} style={{ width: cell - 16, height: cell - 16, borderRadius: (cell - 16) / 2, opacity: own ? 1 : .5 }} />
-        {eq ? <T s="● فعال" style={{ fontSize: 9, color: C.green, marginTop: 2 }} /> : own ? <T s=" " style={{ fontSize: 9, marginTop: 2 }} /> : (
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}><Img src={UI2.x_gem} style={{ width: 12, height: 12 }} /><T s={price} style={{ fontFamily: F.head, fontSize: 8, color: '#9fd8ff', marginLeft: 2 }} /></View>
+    <View style={[s.rar, { borderColor: r.c, backgroundColor: r.c + '22', alignSelf: startAlign(), flexDirection: rowDir() }]}>
+      {rk === 4 ? <Icon name="crown" size={13} glow={false} /> : null}
+      <T s={tr(r.fa, r.n)} style={{ fontFamily: F.head, fontSize: 9, letterSpacing: 2, color: r.c, marginHorizontal: 3 }} />
+    </View>
+  );
+}
+
+const DiscCell = memo(function DiscCell({ t, cell, last, sel, own, eq, price, onPress }: { t: TeamT; cell: number; last: boolean; sel: boolean; own: boolean; eq: boolean; price: string; onPress: () => void }) {
+  const rc = RARITY[rarity(t)].c, dlx = t.tier === 'dlx';
+  return (
+    <Press onPress={onPress} style={{ width: cell, marginLeft: isRTL() && !last ? 8 : 0, marginRight: !isRTL() && !last ? 8 : 0, marginBottom: 8 }} scaleTo={.92}>
+      <View style={[s.cell, { height: cell + 22, borderColor: sel ? rc : dlx ? rc + '66' : 'rgba(110,170,255,.16)' }, sel && { backgroundColor: rc + '22' }]}>
+        {dlx ? <LinearGradient colors={['rgba(255,122,224,.18)', 'rgba(255,210,87,.06)', 'transparent']} style={StyleSheet.absoluteFill} /> : null}
+        <Img src={TEAM_IMG[teamKey(t)]} style={{ width: cell - 12, height: cell - 12, opacity: own ? 1 : .55 }} />
+        {eq ? <T s={tr('● فعال', '● ACTIVE')} style={{ fontSize: 9, color: C.green, marginTop: 1 }} /> : own ? <T s={t.name} n={1} raw style={{ fontSize: 8, color: C.dim, marginTop: 1, maxWidth: cell - 6 }} /> : (
+          <T s={price} n={1} style={{ fontFamily: F.head, fontSize: 8, color: price.startsWith('◉') ? C.gold : '#9fd8ff', marginTop: 1 }} />
         )}
-        {!own ? <View style={s.lock}><T s="🔒" style={{ fontSize: 9 }} /></View> : null}
+        {!own ? <View style={s.lock}><Icon name="lock" size={12} glow={false} /></View> : null}
+        {dlx ? <View style={s.crown}><Icon name="crown" size={13} glow={false} /></View> : null}
       </View>
     </Press>
   );
@@ -112,20 +148,17 @@ const DiscCell = memo(function DiscCell({ t, cell, last, sel, own, eq, price, on
 function DiscHero({ t, color }: { t: TeamT; color: string }) {
   const spin = useSharedValue(0), pop = useSharedValue(1);
   useEffect(() => { spin.value = withRepeat(withTiming(1, { duration: 12000, easing: Easing.linear }), -1, false); }, []);
-  useEffect(() => { pop.value = withSequence(withTiming(.75, { duration: 70 }), withSpring(1, { damping: 8, stiffness: 220 })); }, [t.id]);
+  useEffect(() => { pop.value = withSequence(withTiming(.8, { duration: 70 }), withSpring(1, { damping: 8, stiffness: 220 })); }, [t.id]);
   const ring = useAnimatedStyle(() => ({ transform: [{ rotate: `${spin.value * 360}deg` }] }));
   const ring2 = useAnimatedStyle(() => ({ transform: [{ rotate: `${-spin.value * 720}deg` }] }));
   const disc = useAnimatedStyle(() => ({ transform: [{ scale: pop.value }] }));
+  const S = 150;
   return (
-    <View style={{ height: 230, alignItems: 'center', justifyContent: 'center' }}>
-      <Img src={UI.holopad} style={{ position: 'absolute', bottom: 0, width: 240, height: 86, opacity: .9 }} />
-      <Pulse size={150} color={color + '55'} />
-      <Animated.View style={[{ position: 'absolute', width: 220, height: 220 }, ring]}><Img src={UI2.ring} style={{ width: 220, height: 220, opacity: .75 }} /></Animated.View>
-      <Animated.View style={[{ position: 'absolute', width: 184, height: 184, borderRadius: 92, borderWidth: 2, borderColor: color + '88', borderStyle: 'dashed' }, ring2]} />
-      <Animated.View style={[s.disc, { borderColor: color, shadowColor: color }, disc]}>
-        <Img src={TEAM_IMG[teamKey(t)]} style={{ width: 132, height: 132, borderRadius: 66 }} />
-        <LinearGradient colors={['rgba(255,255,255,.4)', 'rgba(255,255,255,0)', 'rgba(255,255,255,0)']} start={{ x: .2, y: 0 }} end={{ x: .7, y: .8 }} style={[StyleSheet.absoluteFill, { borderRadius: 74 }]} />
-      </Animated.View>
+    <View style={{ height: S + 40, alignItems: 'center', justifyContent: 'center' }}>
+      <View style={{ position: 'absolute', bottom: 0 }}><HoloPad width={S * 1.25} color={color} /></View>
+      <Animated.View style={[{ position: 'absolute', width: S + 16, height: S + 16, borderRadius: (S + 16) / 2, borderWidth: 2, borderColor: color + 'aa', borderStyle: 'dashed' }, ring]} />
+      <Animated.View style={[{ position: 'absolute', width: S - 6, height: S - 6, borderRadius: (S - 6) / 2, borderWidth: 1, borderColor: N.purple + '99' }, ring2]} />
+      <Animated.View style={disc}><Img src={TEAM_IMG[teamKey(t)]} style={{ width: S - 14, height: S - 14 }} /></Animated.View>
     </View>
   );
 }
@@ -180,7 +213,7 @@ function BallHero({ idx }: { idx: number }) {
   const sh = useAnimatedStyle(() => ({ transform: [{ scaleX: 1 - bob.value * .25 }], opacity: .55 - bob.value * .2 }));
   return (
     <View style={{ height: 220, alignItems: 'center', justifyContent: 'center' }}>
-      <Img src={UI.holopad} style={{ position: 'absolute', bottom: 6, width: 230, height: 84 }} />
+      <View style={{ position: 'absolute', bottom: 6 }}><HoloPad width={230} /></View>
       <Animated.View style={[{ position: 'absolute', bottom: 40, width: 110, height: 18, borderRadius: 55, backgroundColor: '#000' }, sh]} />
       <Pulse size={130} color="rgba(61,255,216,.35)" />
       <Animated.View style={a}><Img src={BALL_IMG['b' + idx]} style={{ width: 132, height: 132, borderRadius: 66 }} /></Animated.View>
@@ -270,8 +303,10 @@ function Slot({ x, y, img, delay }: { x: number; y: number; img: any; delay: num
 
 const s = StyleSheet.create({
   disc: { width: 148, height: 148, borderRadius: 74, borderWidth: 4, alignItems: 'center', justifyContent: 'center', backgroundColor: '#050816', shadowOpacity: .9, shadowRadius: 22, shadowOffset: { width: 0, height: 0 }, elevation: 12 },
-  rar: { paddingHorizontal: 12, height: 22, borderRadius: 11, borderWidth: 1, justifyContent: 'center' },
-  cell: { borderRadius: 16, borderWidth: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(8,12,34,.78)' },
+  rar: { paddingHorizontal: 8, height: 22, borderRadius: 4, borderWidth: 1, alignItems: 'center' },
+  tab: { height: 38, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(120,110,255,.3)', backgroundColor: 'rgba(8,5,28,.85)', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
+  crown: { position: 'absolute', top: 3, left: 4 },
+  cell: { borderRadius: 10, overflow: 'hidden', borderWidth: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(8,12,34,.78)' },
   lock: { position: 'absolute', top: 4, right: 4 },
   arena: { marginTop: 8, borderWidth: 2, borderColor: C.cyan, borderRadius: 18, padding: 3, shadowColor: C.cyan, shadowOpacity: .7, shadowRadius: 20, shadowOffset: { width: 0, height: 0 }, elevation: 10, backgroundColor: '#050816' },
   pitch: { marginTop: 8, borderRadius: 20, overflow: 'hidden', borderWidth: 2, borderColor: 'rgba(79,227,255,.55)' },
